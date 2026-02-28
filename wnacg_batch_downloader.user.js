@@ -62,11 +62,14 @@
     },
     ui: {
       progressPanel: null,
+      progressTitle: null,
+      progressBar: null,
       progressFill: null,
       progressText: null,
       logBox: null,
       pauseBtn: null,
       clearQueueBtn: null,
+      minimizeBtn: null,
       minimized: false,
       galleryAutoBtn: null
     }
@@ -130,7 +133,7 @@
   // ============ 移动端检测 ============
   const IS_NARROW = window.matchMedia?.('(max-width: 768px)').matches ?? false;
   const IS_TOUCH = 'ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0;
-  const IS_MOBILE = IS_NARROW && IS_TOUCH;
+  const IS_MOBILE = IS_NARROW || IS_TOUCH;
 
   // 响应式：监听 media query 变化（平板旋转/分屏）
   let isMobileUI = IS_NARROW;
@@ -222,30 +225,145 @@
   function injectBaseStyles() {
     const baseCSS = `
       /* WNACG Batch Downloader 样式 */
+      :root {
+        --wnacg-accent: #0f766e;
+        --wnacg-accent-strong: #0c5e57;
+        --wnacg-accent-soft: #e7f7f2;
+        --wnacg-danger: #dc2626;
+        --wnacg-danger-soft: #fee2e2;
+        --wnacg-border: #d9e3ea;
+        --wnacg-surface: #ffffff;
+        --wnacg-surface-soft: #f8fbfd;
+        --wnacg-text-main: #102a43;
+        --wnacg-text-sub: #4e667e;
+        --wnacg-shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.08);
+        --wnacg-shadow-md: 0 8px 22px rgba(15, 23, 42, 0.12);
+        --wnacg-focus: #0ea5e9;
+      }
+
       .wnacg-batch-btn {
-        padding: 8px 16px;
-        margin: 5px;
-        border: none;
-        border-radius: 4px;
-        background-color: #4CAF50;
-        color: white;
-        font-size: 14px;
+        --btn-bg: linear-gradient(180deg, #16a085 0%, var(--wnacg-accent) 100%);
+        --btn-border: var(--wnacg-accent);
+        --btn-fg: #ffffff;
+        min-height: 40px;
+        padding: 0 14px;
+        margin: 0;
+        border: 1px solid var(--btn-border);
+        border-radius: 10px;
+        background: var(--btn-bg);
+        color: var(--btn-fg) !important;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1;
+        letter-spacing: 0;
+        text-decoration: none;
+        white-space: nowrap;
         cursor: pointer;
-        transition: background-color 0.3s ease;
+        user-select: none;
+        box-shadow: 0 1px 2px rgba(15, 118, 110, 0.16);
+        transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
       }
       
       .wnacg-batch-btn:hover {
-        background-color: #45a049;
+        box-shadow: 0 6px 14px rgba(15, 118, 110, 0.24);
+        transform: translateY(-1px);
+      }
+
+      .wnacg-batch-btn:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 8px rgba(15, 118, 110, 0.2);
+      }
+
+      .wnacg-batch-btn:focus-visible {
+        outline: 2px solid var(--wnacg-focus);
+        outline-offset: 2px;
       }
       
       .wnacg-batch-btn:disabled {
-        background-color: #cccccc;
+        background: #cfd8dc;
+        border-color: #b0bec5;
         cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .wnacg-btn-secondary {
+        --btn-bg: #fff;
+        --btn-border: #c8d8e4;
+        --btn-fg: #335a78;
+        box-shadow: none;
+      }
+
+      .wnacg-btn-secondary:hover {
+        --btn-bg: #f6fbff;
+        --btn-border: #a9c2d4;
+      }
+
+      .wnacg-btn-ghost {
+        --btn-bg: #f2f6fa;
+        --btn-border: #d4e0ea;
+        --btn-fg: #365468;
+        box-shadow: none;
+      }
+
+      .wnacg-btn-ghost:hover {
+        --btn-bg: #e9f1f7;
+      }
+
+      .wnacg-btn-danger {
+        --btn-bg: var(--wnacg-danger);
+        --btn-border: var(--wnacg-danger);
+        --btn-fg: #fff;
+        box-shadow: 0 1px 2px rgba(220, 38, 38, 0.24);
+      }
+
+      .wnacg-btn-danger:hover {
+        --btn-bg: #b91c1c;
+        --btn-border: #b91c1c;
+        box-shadow: 0 6px 14px rgba(220, 38, 38, 0.26);
+      }
+
+      .wnacg-album-action-row,
+      .wnacg-shelf-toolbar,
+      .wnacg-gallery-toolbar,
+      .wnacg-series-panel {
+        background: var(--wnacg-surface);
+        border: 1px solid var(--wnacg-border);
+        border-radius: 12px;
+        box-shadow: var(--wnacg-shadow-sm);
+      }
+
+      .wnacg-album-action-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        margin: 10px 0 8px;
+        padding: 10px;
+      }
+
+      .wnacg-album-action-row > a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        padding: 0 14px;
+        border-radius: 10px;
+        text-decoration: none;
+        box-sizing: border-box;
+        font-size: 13px;
+        font-weight: 600;
       }
 
       .wnacg-album-oneclick-btn {
-        margin-left: 8px;
-        vertical-align: middle;
+        border: 1px solid #1d4ed8 !important;
+        background: linear-gradient(180deg, #3778ff 0%, #1d4ed8 100%) !important;
+        color: #fff !important;
+        box-shadow: 0 4px 12px rgba(29, 78, 216, 0.24);
       }
 
       .wnacg-album-oneclick-btn.wnacg-disabled {
@@ -253,50 +371,90 @@
         pointer-events: none;
       }
 
+      .wnacg-album-oneclick-btn:hover {
+        background: linear-gradient(180deg, #2f72f7 0%, #1e40af 100%) !important;
+      }
+
       .wnacg-album-series-btn {
-        margin-left: 8px;
-        vertical-align: middle;
+        border: 1px solid #a8d7cc !important;
+        background: var(--wnacg-accent-soft) !important;
+        color: var(--wnacg-accent-strong) !important;
+      }
+
+      .wnacg-album-series-btn:hover {
+        background: #d8f1e8 !important;
       }
 
       .wnacg-series-panel {
-        margin: 12px 0 8px;
-        padding: 10px 12px;
-        border: 1px solid #d9d9d9;
-        border-radius: 8px;
-        background: #fff;
+        margin: 12px 0 10px;
+        padding: 14px;
+        background: linear-gradient(180deg, #fbfefe 0%, #f4faf9 100%);
       }
 
       .wnacg-series-title {
-        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 16px;
         font-weight: 600;
-        color: #333;
-        margin-bottom: 8px;
+        color: var(--wnacg-text-main);
+        margin-bottom: 6px;
       }
 
       .wnacg-series-keyword {
-        color: #2e7d32;
-        margin-left: 6px;
-        font-weight: 500;
+        color: #065f46;
+        margin-left: 2px;
+        font-weight: 600;
+        font-size: 12px;
+        padding: 3px 9px;
+        border-radius: 999px;
+        background: #d7f1e9;
+        border: 1px solid #b7e4d6;
+      }
+
+      .wnacg-series-meta {
+        margin-bottom: 10px;
+        font-size: 12px;
+        line-height: 1.55;
+        color: var(--wnacg-text-sub);
       }
 
       .wnacg-series-list {
         list-style: none;
         margin: 0;
         padding: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 10px;
+      }
+
+      .wnacg-series-item {
+        border: 1px solid #deebf3;
+        border-radius: 10px;
+        background: #fff;
+        padding: 10px 12px;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease;
+        min-height: 72px;
+      }
+
+      .wnacg-series-item:hover {
+        border-color: #c2dff0;
+        box-shadow: 0 4px 12px rgba(17, 112, 189, 0.14);
       }
 
       .wnacg-series-loading {
-        font-size: 12px;
-        color: #666;
+        font-size: 13px;
+        color: var(--wnacg-text-sub);
+        line-height: 1.5;
       }
 
       .wnacg-series-list a {
-        color: #1565c0;
+        color: #0f4c81;
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
         text-decoration: none;
-        line-height: 1.35;
+        line-height: 1.45;
       }
 
       .wnacg-series-list a:hover {
@@ -392,59 +550,77 @@
         opacity: 0.65;
         cursor: not-allowed;
       }
-      
+
+      .wnacg-series-submeta {
+        margin-top: 4px;
+        color: #627d98;
+        font-size: 12px;
+        line-height: 1.45;
+      }
       .wnacg-progress-panel {
         position: fixed;
         bottom: 20px;
         right: 20px;
-        width: 350px;
-        background-color: #f5f5f5;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        padding: 16px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        width: 360px;
+        max-width: calc(100vw - 20px);
+        background: linear-gradient(180deg, #fdfefe 0%, #f7fafc 100%);
+        border: 1px solid #d9e3ea;
+        border-radius: 14px;
+        padding: 14px;
+        box-shadow: var(--wnacg-shadow-md);
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
         z-index: 9999;
       }
+
+      .wnacg-progress-panel.wnacg-minimized {
+        width: auto;
+        min-width: 180px;
+        max-width: min(70vw, 320px);
+        padding: 10px 12px;
+      }
+
+      .wnacg-progress-panel.wnacg-minimized .wnacg-progress-title {
+        margin-bottom: 0;
+        font-size: 13px;
+      }
       
       .wnacg-progress-title {
-        font-size: 16px;
-        font-weight: bold;
-        margin-bottom: 12px;
-        color: #333;
+        font-size: 15px;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: #0f2438;
       }
       
       .wnacg-progress-bar {
         width: 100%;
-        height: 8px;
-        background-color: #e0e0e0;
-        border-radius: 4px;
+        height: 9px;
+        background-color: #dbe8f0;
+        border-radius: 999px;
         overflow: hidden;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
       }
       
       .wnacg-progress-fill {
         height: 100%;
-        background-color: #4CAF50;
+        background: linear-gradient(90deg, #10b981 0%, #0f766e 100%);
         transition: width 0.3s ease;
       }
       
        .wnacg-progress-text {
          font-size: 12px;
-         color: #666;
+         color: #3b5368;
          margin-bottom: 12px;
+         line-height: 1.45;
        }
 
        .wnacg-shelf-toolbar {
          display: flex;
          flex-wrap: wrap;
          align-items: center;
-         gap: 8px;
+         gap: 10px;
          padding: 10px;
          margin: 10px 0;
-         border: 1px solid #ddd;
-         border-radius: 8px;
-         background: #fff;
+         background: var(--wnacg-surface-soft);
        }
 
        .wnacg-shelf-toolbar label {
@@ -452,31 +628,55 @@
          align-items: center;
          gap: 6px;
          font-size: 12px;
-         color: #333;
+         color: #34495e;
          user-select: none;
+         min-height: 32px;
+         padding: 0 8px;
+         border-radius: 8px;
+         background: #f3f8fb;
+         border: 1px solid #d7e5ef;
        }
 
        .wnacg-shelf-checkbox {
-         margin-right: 8px;
-         vertical-align: middle;
+         width: 18px;
+         height: 18px;
+         accent-color: var(--wnacg-accent);
+         cursor: pointer;
        }
 
-       .wnacg-shelf-count {
+       #wnacg-include-all-pages {
+         width: 16px;
+         height: 16px;
+         accent-color: #d97706;
+         cursor: pointer;
+       }
+
+       .wnacg-shelf-count,
+       .wnacg-gallery-count {
          margin-left: auto;
          font-size: 12px;
-         color: #666;
+         color: #3f5b72;
+         background: #eef5fa;
+         border: 1px solid #d6e5ef;
+         border-radius: 999px;
+         padding: 6px 10px;
+         font-weight: 600;
        }
 
        .wnacg-progress-log {
          max-height: 180px;
          overflow: auto;
-         padding: 8px;
-         border: 1px solid #ddd;
-         border-radius: 6px;
+         padding: 8px 10px;
+         border: 1px solid #d6e3ed;
+         border-radius: 8px;
          background: #fff;
          font-size: 12px;
          line-height: 1.4;
-         color: #333;
+         color: #334155;
+       }
+
+       .wnacg-progress-log > div + div {
+         margin-top: 4px;
        }
 
        .wnacg-progress-actions {
@@ -493,27 +693,55 @@
           display: flex;
           flex-wrap: wrap;
           align-items: center;
-          gap: 8px;
-          padding: 10px 15px;
+          gap: 10px;
+          padding: 10px;
           margin: 10px auto;
           max-width: 1200px;
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          background: #fff;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+          background: var(--wnacg-surface-soft);
+          box-shadow: var(--wnacg-shadow-sm);
           z-index: 100;
-          position: relative;
+          position: sticky;
+          top: 10px;
         }
 
         .wnacg-gallery-toolbar .wnacg-batch-btn {
-          padding: 6px 14px;
-          font-size: 13px;
+          padding: 0 12px;
+          font-size: 12.5px;
+          min-height: 36px;
         }
 
-        .wnacg-gallery-count {
-          margin-left: auto;
+        .wnacg-gallery-mode-indicator {
+          padding: 6px 10px;
+          border-radius: 999px;
+          border: 1px solid #d6d6d6;
+          background: #f6f6f6;
+          color: #5f6f80;
           font-size: 12px;
-          color: #666;
+          white-space: nowrap;
+        }
+
+        .wnacg-gallery-mode-indicator.wnacg-active {
+          border-color: #9ed3c5;
+          background: #e7f7f2;
+          color: #0f766e;
+          font-weight: 600;
+        }
+
+        .wnacg-batch-btn.wnacg-select-mode-active {
+          --btn-bg: #0f766e;
+          --btn-border: #0f766e;
+          --btn-fg: #fff;
+        }
+
+        .wnacg-batch-btn.wnacg-exit-mode-btn {
+          --btn-bg: #dc2626;
+          --btn-border: #dc2626;
+          --btn-fg: #fff;
+        }
+
+        .wnacg-batch-btn.wnacg-exit-mode-btn:hover {
+          --btn-bg: #b91c1c;
+          --btn-border: #b91c1c;
         }
 
         .wnacg-gallery-hot-legend {
@@ -525,13 +753,17 @@
 
         .wnacg-gallery-checkbox {
           position: absolute;
-          top: 6px;
-          left: 6px;
-          width: 18px;
-          height: 18px;
+          top: 8px;
+          left: 8px;
+          width: 22px;
+          height: 22px;
           cursor: pointer;
           z-index: 10;
-          accent-color: #4CAF50;
+          accent-color: #10b981;
+          border-radius: 6px;
+          border: 1px solid #bed2df;
+          background: #fff;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
         }
 
         .wnacg-gallery-hot-badge {
@@ -562,38 +794,49 @@
          li.gallary_item,
          .wnacg-gallery-item {
            position: relative;
+           border-radius: 12px;
+           overflow: hidden;
+           transition: box-shadow 0.18s ease, transform 0.18s ease;
+         }
+
+         li.gallary_item:hover,
+         .wnacg-gallery-item:hover {
+           box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
+           transform: translateY(-2px);
          }
 
          /* 选择模式下的卡片选中标记 */
+         li.gallary_item.wnacg-selected::after,
+         .wnacg-gallery-item.wnacg-selected::after {
+           content: '';
+           position: absolute;
+           top: 0; left: 0; right: 0; bottom: 0;
+           border: 2px solid #10b981;
+           box-sizing: border-box;
+           background: rgba(16, 185, 129, 0.18);
+           pointer-events: none;
+           z-index: 4;
+         }
+
          li.gallary_item.wnacg-selected .pic_box::after,
          .wnacg-gallery-item.wnacg-selected .pic_box::after {
            content: '✓';
            position: absolute;
-           top: 0; left: 0; right: 0; bottom: 0;
-           background: rgba(76, 175, 80, 0.35);
+           top: 10px;
+           right: 10px;
+           width: 28px;
+           height: 28px;
+           border-radius: 50%;
            display: flex;
            align-items: center;
            justify-content: center;
-           font-size: 48px;
+           background: #10b981;
            color: #fff;
-           text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+           font-size: 18px;
+           font-weight: 700;
+           box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
            pointer-events: none;
            z-index: 5;
-         }
-
-         .wnacg-gallery-item.wnacg-selected::after {
-           content: '✓';
-           position: absolute;
-           top: 0; left: 0; right: 0; bottom: 0;
-           background: rgba(76, 175, 80, 0.28);
-           display: flex;
-           align-items: center;
-           justify-content: center;
-           font-size: 40px;
-           color: #fff;
-           text-shadow: 0 2px 6px rgba(0,0,0,0.4);
-           pointer-events: none;
-           z-index: 4;
          }
 
          li.gallary_item .pic_box,
@@ -602,78 +845,61 @@
            z-index: 6;
          }
 
-         /* 选择模式按钮激活状态 */
-         .wnacg-batch-btn.wnacg-select-mode-active {
-           background: #4CAF50;
-           color: #fff;
-           border-color: #4CAF50;
-         }
+           /* 选择模式下封面的 cursor */
+           body.wnacg-select-mode li.gallary_item .pic_box,
+           body.wnacg-select-mode .wnacg-gallery-item .pic_box {
+             cursor: pointer;
+           }
 
-          /* 选择模式下封面的 cursor */
-          body.wnacg-select-mode li.gallary_item .pic_box,
-          body.wnacg-select-mode .wnacg-gallery-item .pic_box {
-            cursor: pointer;
-          }
-
-          .wnacg-gallery-mode-indicator {
-            padding: 4px 10px;
-            border-radius: 999px;
-            border: 1px solid #d6d6d6;
-            background: #f6f6f6;
-            color: #666;
-            font-size: 12px;
-            white-space: nowrap;
-          }
-
-          .wnacg-gallery-mode-indicator.wnacg-active {
-            border-color: #2e7d32;
-            background: #e8f5e9;
-            color: #1b5e20;
-            font-weight: 600;
-          }
-
-          .wnacg-batch-btn.wnacg-exit-mode-btn {
-            background: #f44336;
-          }
-
-          .wnacg-batch-btn.wnacg-exit-mode-btn:hover {
-            background: #e53935;
+          #wnacg-gallery-toolbar button + button {
+            margin-left: 0;
           }
 
           /* ============ 移动端适配 ============ */
           @media (max-width: 768px) {
             :root {
-              --wnacg-toolbar-h: 72px;
+              --wnacg-toolbar-h: 160px;
               --wnacg-sa-bottom: env(safe-area-inset-bottom, 0px);
-            }
-
-            /* 画廊工具栏底部悬浮 */
-            .wnacg-gallery-toolbar {
-              position: fixed;
-              left: 0; right: 0;
-              bottom: env(safe-area-inset-bottom, 0px);
-              margin: 0;
-              max-width: none;
-              border-radius: 12px 12px 0 0;
-              padding: 8px 10px;
-              overflow-x: auto;
-              -webkit-overflow-scrolling: touch;
-              flex-wrap: nowrap;
-              box-shadow: 0 -2px 8px rgba(0,0,0,0.15);
-              z-index: 9998;
-            }
-
-            /* 工具栏存在时页面底部留白 */
-            body.wnacg-mobile-has-toolbar {
-              padding-bottom: calc(var(--wnacg-toolbar-h) + env(safe-area-inset-bottom, 0px)) !important;
             }
 
             /* 按钮触控友好 */
             .wnacg-batch-btn {
-              min-height: 40px;
-              padding: 10px 14px;
+              min-height: 44px;
+              padding: 0 14px;
               font-size: 13px;
               white-space: nowrap;
+            }
+
+            .wnacg-album-action-row {
+              gap: 6px;
+              padding: 8px;
+            }
+
+            .wnacg-album-action-row > a {
+              min-height: 44px;
+              flex: 1 1 calc(50% - 6px);
+              min-width: 120px;
+              padding: 0 10px;
+              font-size: 14px;
+            }
+
+            .wnacg-series-panel {
+              margin: 10px 0 8px;
+              padding: 10px;
+              border-radius: 10px;
+            }
+
+            .wnacg-series-item {
+              padding: 10px;
+            }
+
+            .wnacg-series-list a {
+              font-size: 14px;
+              line-height: 1.45;
+            }
+
+            .wnacg-series-list {
+              grid-template-columns: 1fr;
             }
 
             /* checkbox 增大命中区 */
@@ -684,19 +910,79 @@
               left: 8px;
             }
 
+            /* 画廊工具栏底部悬浮 */
+            .wnacg-gallery-toolbar {
+              position: fixed;
+              left: 8px;
+              right: 8px;
+              top: auto;
+              bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
+              margin: 0;
+              max-width: none;
+              border-radius: 14px;
+              padding: 10px;
+              flex-wrap: wrap;
+              justify-content: flex-start;
+              gap: 8px;
+              box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.2);
+              z-index: 9998;
+              max-height: min(52vh, 260px);
+              overflow-y: auto;
+              -webkit-overflow-scrolling: touch;
+            }
+
+            .wnacg-gallery-toolbar .wnacg-batch-btn {
+              flex: 1 1 calc(33.33% - 6px);
+              min-width: 84px;
+              font-size: 12px;
+            }
+
+            .wnacg-gallery-mode-indicator {
+              width: 100%;
+              order: 9;
+              white-space: normal;
+              line-height: 1.35;
+            }
+
+            .wnacg-gallery-count {
+              width: 100%;
+              order: 10;
+              margin-left: 0;
+              text-align: center;
+            }
+
+            /* 工具栏存在时页面底部留白 */
+            body.wnacg-mobile-has-toolbar {
+              padding-bottom: calc(var(--wnacg-toolbar-h) + env(safe-area-inset-bottom, 0px)) !important;
+            }
+
             /* 进度面板底部全宽 */
             .wnacg-progress-panel {
-              left: 0;
-              right: 0;
+              left: auto;
+              right: 8px;
               top: auto;
-              width: auto;
-              border-radius: 12px 12px 0 0;
-              max-height: 60vh;
+              width: min(92vw, 360px);
+              border-radius: 14px;
+              max-height: 52vh;
               overflow-y: auto;
             }
             /* 工具栏存在时进度面板偏移 */
             body.wnacg-mobile-has-toolbar .wnacg-progress-panel {
-              bottom: calc(var(--wnacg-toolbar-h) + env(safe-area-inset-bottom, 0px));
+              bottom: calc(var(--wnacg-toolbar-h) + env(safe-area-inset-bottom, 0px) + 16px);
+            }
+
+            .wnacg-progress-panel.wnacg-minimized {
+              left: auto;
+              right: 8px;
+              width: auto;
+              min-width: 0;
+              max-width: 72vw;
+              border-radius: 999px;
+              padding: 8px 10px;
+            }
+
+            .wnacg-progress-panel.wnacg-minimized .wnacg-progress-title {
+              font-size: 12px;
             }
             /* 书架页移动端 */
             .wnacg-shelf-toolbar {
@@ -718,6 +1004,17 @@
               touch-action: manipulation;
             }
           }
+
+      @media (prefers-reduced-motion: reduce) {
+        .wnacg-batch-btn,
+        .wnacg-album-oneclick-btn,
+        .wnacg-album-series-btn,
+        li.gallary_item,
+        .wnacg-gallery-item {
+          transition: none !important;
+          transform: none !important;
+        }
+      }
     `;
     injectStyles(baseCSS);
   }
@@ -943,37 +1240,374 @@
   function normalizeSeriesText(input) {
     return String(input || '')
       .toLowerCase()
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&(?:lt|gt|amp|quot|#39);/gi, ' ')
       .replace(/\[[^\]]*\]/g, ' ')
       .replace(/[【】「」『』（）()《》〈〉［］\[\]\s_\-–—:：,，.。!?！？~～|｜\\/]+/g, '')
       .trim();
   }
 
+  const SERIES_MASK_CHAR_CLASS = '[●○◎◆◇□■＊*･・]';
+
   /**
-   * 从相册标题推断系列关键词（只在明显“话/卷/vol”等系列特征下启用）
+   * 判断标题是否匹配系列关键词（支持站点常见打码字符）
+   * @param {string} title
+   * @param {string} keyword
+   * @returns {boolean}
+   */
+  function matchesSeriesKeyword(title, keyword) {
+    const normalizedTitle = normalizeSeriesText(title);
+    const normalizedKeyword = normalizeSeriesText(keyword);
+    if (!normalizedTitle || !normalizedKeyword) return false;
+    if (normalizedTitle.includes(normalizedKeyword)) return true;
+
+    const escaped = String(normalizedKeyword)
+      .split('')
+      .map((ch) => {
+        if (/[●○◎◆◇□■＊*･・]/.test(ch)) return SERIES_MASK_CHAR_CLASS;
+        const safe = ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return `(?:${safe}|${SERIES_MASK_CHAR_CLASS})`;
+      })
+      .join('');
+
+    try {
+      return new RegExp(escaped, 'i').test(normalizedTitle);
+    } catch {
+      return false;
+    }
+  }
+
+  const SERIES_MARKER_RE = /(第?\s*\d+(?:\s*[-~～]\s*\d+)?\s*[话話回卷章部]|(?:vol|VOL)\.?\s*\d+(?:\.\d+)?|#\s*\d+|(?:part|Part)\s*\d+|[上中下前后後]\s*篇?)/;
+  const SERIES_STOPWORD_SET = new Set([
+    'tag',
+    'tags',
+    '漢化',
+    '汉化',
+    '同人誌',
+    '同人志',
+    '分類',
+    '分类',
+    '頁數',
+    '页数'
+  ]);
+
+  /**
+   * 清理系列关键词文本
+   * @param {string} input
+   * @returns {string}
+   */
+  function cleanupSeriesKeyword(input) {
+    return String(input || '')
+      .replace(/^\s*(?:\[[^\]]+\]\s*)+/g, '')
+      .replace(/\s*(?:\[[^\]]+\]\s*)+$/g, '')
+      .replace(/^[\s\-–—:：,，.。!?！？~～|｜\\/]+/g, '')
+      .replace(/[\s\-–—:：,，.。!?！？~～|｜\\/]+$/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  }
+
+  /**
+   * 去掉标题末尾的“第X话/Vol.X/Part X”等编号
+   * @param {string} input
+   * @returns {string}
+   */
+  function stripTrailingSeriesMarker(input) {
+    return String(input || '')
+      .replace(/\s*(?:第?\s*\d+(?:\s*[-~～]\s*\d+)?\s*[话話回卷章部]|(?:vol|VOL)\.?\s*\d+(?:\.\d+)?|#\s*\d+|(?:part|Part)\s*\d+|[上中下前后後]\s*篇?)+\s*$/gi, '')
+      .replace(/[\s\-–—:：,，.。!?！？~～]+$/g, '')
+      .trim();
+  }
+
+  /**
+   * 抽取相册页标签中的候选关键词
+   * @returns {string[]}
+   */
+  function extractAlbumTagKeywords() {
+    const candidates = [];
+    const push = (value) => {
+      const text = String(value || '').trim();
+      if (text) candidates.push(text);
+    };
+
+    const tagLinks = document.querySelectorAll('a[href*="albums-index-tag-"], .tagshow a');
+    for (const link of tagLinks) {
+      push(link.textContent || '');
+    }
+
+    if (candidates.length < 2) {
+      const nodes = document.querySelectorAll('.tagshow, .uwconn span, .uwconn p, .asTB span, .asTB p, .pic_box_tb span, .pic_box_tb p');
+      for (const el of nodes) {
+        const full = String(el.textContent || '').replace(/\s+/g, ' ').trim();
+        if (!/(?:標籤|标签)\s*[：:]/i.test(full)) continue;
+        let tagText = full.replace(/^.*?(?:標籤|标签)\s*[：:]\s*/i, '');
+        tagText = tagText.split(/(?:分類|分类|頁數|页数|作者|上傳|上传|日期|簡介|简介)\s*[：:]/i)[0].trim();
+        if (!tagText) continue;
+        push(tagText);
+      }
+    }
+
+    const expanded = [];
+    for (const item of candidates) {
+      expanded.push(item);
+      const parts = item
+        .replace(/[!！；;]+/g, ' ')
+        .split(/[+＋|｜,，、/\\\s]+/)
+        .map((part) => part.trim())
+        .filter(Boolean);
+      for (const part of parts) expanded.push(part);
+    }
+
+    const uniq = new Map();
+    for (const value of expanded) {
+      const cleaned = cleanupSeriesKeyword(value);
+      if (!cleaned) continue;
+      const normalized = normalizeSeriesText(cleaned);
+      if (!normalized) continue;
+      if (/^[+#+]*tag[s]?$/i.test(normalized)) continue;
+      if (SERIES_STOPWORD_SET.has(normalized)) continue;
+      if (!uniq.has(normalized)) uniq.set(normalized, cleaned);
+    }
+    return Array.from(uniq.values());
+  }
+
+  const AUTHOR_TAG_STOPWORD_SET = new Set([
+    '巨乳', '貧乳', '萝莉', '蘿莉', '人妻', '熟女', '触手', '獸人', '兽人',
+    'ntr', '純愛', '纯爱', '同人誌', '同人志', '單行本', '单行本', '雜誌', '杂志',
+    '韓漫', '韩漫', '漢化', '汉化', '中國翻譯', '中国翻译', '日語', '日语',
+    'fullcolor', 'full', 'color', '无码', '無修正', '无修正', 'dl版', 'dl',
+    'tag', 'tags', '更新', '排行'
+  ].map((item) => normalizeSeriesText(item)));
+
+  /**
+   * 提取相册页标签（含链接）
+   * @returns {Array<{name:string,url:string}>}
+   */
+  function extractAlbumTagEntries() {
+    const map = new Map();
+    const links = Array.from(document.querySelectorAll('a[href*="albums-index-tag-"], .tagshow a[href]'));
+    for (const link of links) {
+      const name = cleanupSeriesKeyword(link.textContent || '');
+      if (!name) continue;
+      const normalized = normalizeSeriesText(name);
+      if (!normalized) continue;
+      const href = link.getAttribute('href') || link.href || '';
+      if (!href) continue;
+      try {
+        const url = new URL(href, location.origin).toString();
+        if (!map.has(normalized)) map.set(normalized, { name, url });
+      } catch {}
+    }
+    return Array.from(map.values());
+  }
+
+  /**
+   * 从标题中提取作者/社团候选词
+   * @param {string} title
+   * @returns {string[]}
+   */
+  function extractTitleCreatorCandidates(title) {
+    const text = cleanupSeriesKeyword(String(title || '').split(/[|｜]/)[0]);
+    if (!text) return [];
+
+    const candidates = [];
+    const push = (raw) => {
+      const cleaned = cleanupSeriesKeyword(raw)
+        .replace(/^(?:社團|社团|circle)\s*/i, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+      if (!cleaned) return;
+      if (/^(?:c\d{2,4}|comic\d*|dl版|dl|無修正|无修正|中國翻譯|中国翻译|漢化|汉化)$/i.test(cleaned)) return;
+      if (/^[\d.\-~～]+$/.test(cleaned)) return;
+      candidates.push(cleaned);
+    };
+
+    const leading = text.match(/^\s*(?:(?:\[[^\]]+\]|【[^】]+】|\([^)]*\)|（[^）]*）)\s*){1,5}/);
+    const blocks = leading ? (leading[0].match(/\[[^\]]+\]|【[^】]+】|\([^)]*\)|（[^）]*）/g) || []) : [];
+    for (const block of blocks) {
+      const inner = block.replace(/^[\[\(（【]\s*|\s*[\]\)）】]$/g, '').trim();
+      if (!inner) continue;
+      push(inner);
+
+      const pair = inner.match(/^(.+?)\s*[\(（]([^)）]{1,40})[\)）]\s*$/);
+      if (pair) {
+        push(pair[1]);
+        push(pair[2]);
+      }
+
+      const parts = inner
+        .split(/[\/／&＆,，+＋|｜]/)
+        .map((part) => part.trim())
+        .filter(Boolean);
+      for (const part of parts) push(part);
+    }
+
+    const uniq = new Map();
+    for (const item of candidates) {
+      const normalized = normalizeSeriesText(item);
+      if (!normalized) continue;
+      if (normalized.length < 2 || normalized.length > 40) continue;
+      if (!uniq.has(normalized)) uniq.set(normalized, item);
+    }
+    return Array.from(uniq.values());
+  }
+
+  /**
+   * 评估某个标签是否更像“作者标签”
+   * @param {string} tagName
+   * @param {string} title
+   * @param {string[]} creatorCandidates
+   * @param {string[]} keywordCandidates
+   * @returns {number}
+   */
+  function scoreAuthorTagCandidate(tagName, title, creatorCandidates, keywordCandidates) {
+    const normalizedTag = normalizeSeriesText(tagName);
+    if (!normalizedTag) return Number.NEGATIVE_INFINITY;
+
+    let score = 0;
+    if (AUTHOR_TAG_STOPWORD_SET.has(normalizedTag)) score -= 120;
+
+    const titleScore = scoreKeywordAgainstTitle(tagName, title);
+    score += Math.min(titleScore, 60);
+
+    for (const creator of creatorCandidates) {
+      if (matchesSeriesKeyword(tagName, creator) || matchesSeriesKeyword(creator, tagName)) {
+        score += 120;
+        break;
+      }
+    }
+
+    for (const keyword of keywordCandidates) {
+      const normalizedKeyword = normalizeSeriesText(keyword);
+      if (!normalizedKeyword) continue;
+      if (normalizedTag === normalizedKeyword) score -= 45;
+      else if (normalizedTag.includes(normalizedKeyword) || normalizedKeyword.includes(normalizedTag)) score -= 25;
+    }
+
+    if (/[\u3040-\u30ff]/.test(tagName)) score += 10;
+    if (/[a-zA-Z]/.test(tagName)) score += 6;
+    if (/(?:先生|老師|老师|氏)$/.test(tagName)) score += 8;
+
+    if (normalizedTag.length > 24) score -= 12;
+    if (normalizedTag.length <= 2) score -= 8;
+
+    return score;
+  }
+
+  /**
+   * 选择最可能的作者标签候选
+   * @param {string} title
+   * @param {string[]} keywordCandidates
+   * @param {number} maxCount
+   * @returns {Array<{name:string,url:string,score:number}>}
+   */
+  function selectAuthorTagCandidates(title, keywordCandidates = [], maxCount = 2) {
+    const tagEntries = extractAlbumTagEntries();
+    if (tagEntries.length === 0) return [];
+
+    const creatorCandidates = extractTitleCreatorCandidates(title);
+    const scored = tagEntries
+      .map((entry) => ({
+        ...entry,
+        score: scoreAuthorTagCandidate(entry.name, title, creatorCandidates, keywordCandidates)
+      }))
+      .filter((entry) => Number.isFinite(entry.score))
+      .sort((a, b) => b.score - a.score || String(a.name).length - String(b.name).length);
+
+    const selected = scored.filter((entry) => entry.score >= 25).slice(0, maxCount);
+    if (selected.length > 0) return selected;
+
+    // 兜底：至少返回一个非明显通用标签，避免完全走不到“同作者”路径
+    return scored
+      .filter((entry) => !AUTHOR_TAG_STOPWORD_SET.has(normalizeSeriesText(entry.name)))
+      .slice(0, 1);
+  }
+
+  /**
+   * 计算候选词与当前标题的相似度（用于标签优先级）
+   * @param {string} keyword
+   * @param {string} title
+   * @returns {number}
+   */
+  function scoreKeywordAgainstTitle(keyword, title) {
+    const stripMask = (input) => String(input || '').replace(/[●○◎◆◇□■＊*･・]/g, '');
+    const kw = stripMask(normalizeSeriesText(keyword));
+    const tt = stripMask(normalizeSeriesText(title));
+    if (!kw || !tt) return 0;
+    if (tt.includes(kw)) return 100 + kw.length;
+    if (kw.includes(tt)) return 80 + tt.length;
+
+    let overlap = 0;
+    for (const ch of new Set(kw.split(''))) {
+      if (tt.includes(ch)) overlap++;
+    }
+    return overlap * 10 + Math.min(kw.length, 12);
+  }
+
+  /**
+   * 构建系列检索关键词候选列表（按优先级排序）
+   * @param {string} title
+   * @param {string} customKeyword
+   * @returns {string[]}
+   */
+  function buildSeriesKeywordCandidates(title, customKeyword = '') {
+    const map = new Map();
+    const add = (raw) => {
+      const cleaned = cleanupSeriesKeyword(raw);
+      if (!cleaned) return;
+      const stripped = stripTrailingSeriesMarker(cleaned);
+      const finalText = stripped || cleaned;
+      const normalized = normalizeSeriesText(finalText);
+      if (!normalized) return;
+      const isCjk = /[\u3400-\u9fff]/.test(normalized);
+      const minLen = isCjk ? 2 : 3;
+      if (normalized.length < minLen) return;
+      if (SERIES_STOPWORD_SET.has(normalized)) return;
+      if (!map.has(normalized)) map.set(normalized, finalText);
+    };
+
+    if (customKeyword) add(customKeyword);
+
+    let mainTitle = cleanupSeriesKeyword(String(title || '').split(/[|｜]/)[0]);
+    const hasMaskedChar = /[●○◎◆◇□■＊*･・]/.test(mainTitle);
+    let prefixCandidate = '';
+    let markerCandidate = '';
+    if (mainTitle) {
+      const prefixMatch = mainTitle.match(/^(.+?)\s*[-–—:：~～]\s*.+$/);
+      if (prefixMatch) prefixCandidate = prefixMatch[1];
+
+      if (SERIES_MARKER_RE.test(mainTitle)) markerCandidate = stripTrailingSeriesMarker(mainTitle);
+    }
+
+    const tagKeywords = extractAlbumTagKeywords()
+      .sort((a, b) => {
+        const scoreDiff = scoreKeywordAgainstTitle(b, mainTitle) - scoreKeywordAgainstTitle(a, mainTitle);
+        if (scoreDiff !== 0) return scoreDiff;
+        return String(b).length - String(a).length;
+      });
+
+    if (hasMaskedChar) {
+      add(prefixCandidate);
+      add(markerCandidate);
+      for (const tag of tagKeywords) add(tag);
+      add(mainTitle);
+    } else {
+      add(prefixCandidate);
+      add(markerCandidate);
+      add(mainTitle);
+      for (const tag of tagKeywords) add(tag);
+    }
+
+    return Array.from(map.values()).slice(0, 6);
+  }
+
+  /**
+   * 从相册标题推断系列关键词
    * @param {string} title
    * @returns {string}
    */
   function extractSeriesKeyword(title) {
-    let text = String(title || '').trim();
-    if (!text) return '';
-
-    // 去掉开头作者/社团等方括号
-    text = text.replace(/^\s*(?:\[[^\]]+\]\s*)+/g, '');
-    // 中日双语标题通常用 | 分隔，优先取左侧主标题
-    text = text.split(/[|｜]/)[0].trim();
-    // 去掉末尾翻译组等方括号
-    text = text.replace(/\s*(?:\[[^\]]+\]\s*)+$/g, '').trim();
-
-    // 仅在明显系列后缀时启用（如 298-299话 / Vol.12 / Part 3）
-    const seriesMarkerRe = /(第?\s*\d+(?:\s*[-~～]\s*\d+)?\s*[话話回卷章部]|(?:vol|VOL)\.?\s*\d+(?:\.\d+)?|#\s*\d+|(?:part|Part)\s*\d+|[上中下前后後]\s*篇?)/;
-    if (!seriesMarkerRe.test(text)) return '';
-
-    text = text
-      .replace(/\s*(?:第?\s*\d+(?:\s*[-~～]\s*\d+)?\s*[话話回卷章部]|(?:vol|VOL)\.?\s*\d+(?:\.\d+)?|#\s*\d+|(?:part|Part)\s*\d+|[上中下前后後]\s*篇?)+\s*$/gi, '')
-      .replace(/[\s\-–—:：,，.。!?！？~～]+$/g, '')
-      .trim();
-
-    return text;
+    const candidates = buildSeriesKeywordCandidates(title);
+    return candidates[0] || '';
   }
 
   /**
@@ -982,18 +1616,301 @@
    * @returns {string}
    */
   function deriveSeriesKeywordSuggestion(title) {
-    let text = String(title || '').trim();
-    if (!text) return '';
+    const candidates = buildSeriesKeywordCandidates(title);
+    return candidates[0] || '';
+  }
 
-    text = text.replace(/^\s*(?:\[[^\]]+\]\s*)+/g, '');
-    text = text.split(/[|｜]/)[0].trim();
-    text = text.replace(/\s*(?:\[[^\]]+\]\s*)+$/g, '').trim();
-    text = text
-      .replace(/\s*(?:第?\s*\d+(?:\s*[-~～]\s*\d+)?\s*[话話回卷章部]|(?:vol|VOL)\.?\s*\d+(?:\.\d+)?|#\s*\d+|(?:part|Part)\s*\d+|[上中下前后後]\s*篇?)+\s*$/gi, '')
-      .replace(/[\s\-–—:：,，.。!?！？~～]+$/g, '')
+  /**
+   * 归一化并剔除系列比较时的噪声字符
+   * @param {string} input
+   * @returns {string}
+   */
+  function stripSeriesNoiseForCompare(input) {
+    return normalizeSeriesText(input)
+      .replace(/(?:中國翻譯|中国翻译|中國|中国|漢化|汉化|無修正|无修正|dl版|digital|熟肉|機翻|机翻|補檔|补档|重傳|重传|轉載|转载|搬運|搬运)/gi, '')
+      .replace(/\d+(?:\.\d+)?/g, '')
+      .trim();
+  }
+
+  /**
+   * 最长公共子串长度
+   * @param {string} a
+   * @param {string} b
+   * @returns {number}
+   */
+  function longestCommonSubstringLength(a, b) {
+    const s1 = String(a || '');
+    const s2 = String(b || '');
+    if (!s1 || !s2) return 0;
+    const m = s1.length;
+    const n = s2.length;
+    const dp = new Array(n + 1).fill(0);
+    let maxLen = 0;
+
+    for (let i = 1; i <= m; i += 1) {
+      for (let j = n; j >= 1; j -= 1) {
+        if (s1[i - 1] === s2[j - 1]) {
+          dp[j] = dp[j - 1] + 1;
+          if (dp[j] > maxLen) maxLen = dp[j];
+        } else {
+          dp[j] = 0;
+        }
+      }
+    }
+    return maxLen;
+  }
+
+  /**
+   * 构建标题 token 集合（中日韩二元组 + 英文词）
+   * @param {string} input
+   * @returns {Set<string>}
+   */
+  function buildSeriesTokenSet(input) {
+    const text = stripSeriesNoiseForCompare(input);
+    const set = new Set();
+    if (!text) return set;
+
+    const latinWords = text.match(/[a-z]{2,}/gi) || [];
+    for (const word of latinWords) set.add(word.toLowerCase());
+
+    const cjkRuns = text.match(/[\u3400-\u9fff]{2,}/g) || [];
+    for (const run of cjkRuns) {
+      set.add(run);
+      if (run.length <= 2) continue;
+      for (let i = 0; i < run.length - 1; i += 1) {
+        set.add(run.slice(i, i + 2));
+      }
+    }
+
+    return set;
+  }
+
+  /**
+   * 计算标题“同系列亲和分”
+   * @param {string} currentTitle
+   * @param {string} candidateTitle
+   * @param {string} keyword
+   * @returns {number}
+   */
+  function computeSeriesAffinityScore(currentTitle, candidateTitle, keyword) {
+    const currentNorm = stripSeriesNoiseForCompare(currentTitle);
+    const candidateNorm = stripSeriesNoiseForCompare(candidateTitle);
+    if (!currentNorm || !candidateNorm) return 0;
+
+    let score = 0;
+    if (matchesSeriesKeyword(candidateTitle, keyword)) score += 45;
+
+    const lcs = longestCommonSubstringLength(currentNorm, candidateNorm);
+    score += Math.min(lcs, 28) * 2;
+
+    const tokensA = buildSeriesTokenSet(currentNorm);
+    const tokensB = buildSeriesTokenSet(candidateNorm);
+    if (tokensA.size > 0 && tokensB.size > 0) {
+      let inter = 0;
+      for (const token of tokensA) {
+        if (tokensB.has(token)) inter += 1;
+      }
+      const union = new Set([...tokensA, ...tokensB]).size || 1;
+      const jaccard = inter / union;
+      score += Math.round(jaccard * 100);
+    }
+
+    const currentOrder = extractSeriesOrderValue(currentTitle);
+    const candidateOrder = extractSeriesOrderValue(candidateTitle);
+    if (Number.isFinite(currentOrder) && Number.isFinite(candidateOrder)) {
+      const delta = Math.abs(candidateOrder - currentOrder);
+      if (delta <= 2) score += 8;
+      else if (delta <= 5) score += 4;
+    }
+
+    return score;
+  }
+
+  /**
+   * 判断关键词是否疑似作者词（用于过滤误匹配）
+   * @param {string} keyword
+   * @param {string[]} creatorCandidates
+   * @returns {boolean}
+   */
+  function isLikelyAuthorKeyword(keyword, creatorCandidates) {
+    const normalizedKeyword = normalizeSeriesText(keyword);
+    if (!normalizedKeyword) return false;
+    for (const creator of creatorCandidates) {
+      const normalizedCreator = normalizeSeriesText(creator);
+      if (!normalizedCreator) continue;
+      if (normalizedKeyword === normalizedCreator) return true;
+      if (normalizedKeyword.length >= 2 && normalizedCreator.includes(normalizedKeyword) && normalizedKeyword.length <= 4) return true;
+      if (normalizedCreator.length >= 2 && normalizedKeyword.includes(normalizedCreator) && normalizedCreator.length <= 4) return true;
+    }
+    return false;
+  }
+
+  /**
+   * 构建可用于系列匹配的关键词（过滤作者名/过泛词）
+   * @param {string[]} keywordCandidates
+   * @param {string} currentTitle
+   * @param {string} customKeyword
+   * @returns {string[]}
+   */
+  function buildValidSeriesKeywords(keywordCandidates, currentTitle, customKeyword = '') {
+    const creatorCandidates = extractTitleCreatorCandidates(currentTitle);
+    const dedup = new Map();
+    const isCustom = Boolean(String(customKeyword || '').trim());
+
+    for (const candidate of keywordCandidates) {
+      const text = String(candidate || '').trim();
+      if (!text) continue;
+      const normalized = normalizeSeriesText(text);
+      if (!normalized) continue;
+      const hasCjk = /[\u3400-\u9fff]/.test(normalized);
+      const minLen = hasCjk ? 2 : 3;
+      if (normalized.length < minLen) continue;
+      if (!isCustom && isLikelyAuthorKeyword(text, creatorCandidates)) continue;
+      if (!dedup.has(normalized)) dedup.set(normalized, text);
+    }
+
+    return Array.from(dedup.values());
+  }
+
+  /**
+   * 清理列表页抓取到的标题文本
+   * @param {string} raw
+   * @returns {string}
+   */
+  function cleanupAlbumEntryTitle(raw) {
+    return String(raw || '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&(?:lt|gt|amp|quot|#39);/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /**
+   * 估算标题质量，分数越高越接近真实作品名
+   * @param {string} title
+   * @returns {number}
+   */
+  function getAlbumEntryTitleScore(title) {
+    const text = cleanupAlbumEntryTitle(title);
+    if (!text) return 0;
+    const normalized = normalizeSeriesText(text);
+    if (!normalized) return 0;
+    let score = Math.min(text.length, 80);
+    if (/[\u3400-\u9fff]/.test(text)) score += 20;
+    if (/催|眠|性|指導|指导|secret|lesson/i.test(text)) score += 20;
+    if (/^\d+$/.test(text) || /^(封面|下一页|後頁|前頁|详情|詳情)$/i.test(text)) score -= 40;
+    return score;
+  }
+
+  /**
+   * 提取作品序号（用于系列排序）
+   * @param {string} title
+   * @returns {number} 序号，无法识别时返回 Infinity
+   */
+  function extractSeriesOrderValue(title) {
+    const text = cleanupAlbumEntryTitle(title);
+    if (!text) return Number.POSITIVE_INFINITY;
+
+    const regexes = [
+      /第\s*(\d+(?:\.\d+)?)\s*[话話回卷章部冊集篇]/i,
+      /(\d+(?:\.\d+)?)\s*[话話回卷章部冊集篇]/i,
+      /(?:vol(?:ume)?|v)\.?\s*(\d+(?:\.\d+)?)/i,
+      /(?:part|pt)\.?\s*(\d+(?:\.\d+)?)/i,
+      /#\s*(\d+(?:\.\d+)?)/i
+    ];
+
+    for (const re of regexes) {
+      const m = text.match(re);
+      if (!m) continue;
+      const num = Number(m[1]);
+      if (Number.isFinite(num)) return num;
+    }
+
+    const simplified = text
+      .replace(/\[[^\]]*\]|【[^】]*】|（[^）]*）|\([^)]*\)/g, ' ')
+      .replace(/\b(?:c|C)\d{2,3}\b/g, ' ')
+      .replace(/\s+/g, ' ')
       .trim();
 
-    return text;
+    const anchored = simplified.match(/(?:催眠\s*性\s*指導|secret\s*lesson)\s*[-–—:：~～]?\s*(\d+(?:\.\d+)?)/i);
+    if (anchored) {
+      const num = Number(anchored[1]);
+      if (Number.isFinite(num)) return num;
+    }
+
+    const standalone = Array.from(simplified.matchAll(/(?:^|[^\d])(\d{1,2}(?:\.\d+)?)(?=[^\d]|$)/g))
+      .map((m) => Number(m[1]))
+      .filter((n) => Number.isFinite(n) && n > 0 && n <= 50);
+    if (standalone.length > 0) return standalone[0];
+
+    return Number.POSITIVE_INFINITY;
+  }
+
+  /**
+   * 构造“同作品”去重键，保留章节序号信息
+   * @param {string} title
+   * @param {string} keyword
+   * @returns {string}
+   */
+  function buildSeriesWorkKey(title, keyword = '') {
+    const normalizedKeyword = normalizeSeriesText(keyword).replace(/[●○◎◆◇□■＊*･・]/g, '');
+    let text = cleanupAlbumEntryTitle(title);
+
+    text = text
+      .replace(/\[[^\]]*\]|【[^】]*】|（[^）]*）|\([^)]*\)/g, ' ')
+      .replace(/\b(?:c|C)\d{2,3}\b/g, ' ')
+      .replace(/(?:中国翻訳|中國翻譯|汉化|漢化|個人漢化|个人汉化|翻译|翻譯|機翻|机翻|無修正|无修正|dl版|digital|補檔|补档|重傳|重传|轉載|转载|搬运|搬運|熟肉|修正版?)/gi, ' ');
+
+    let key = normalizeSeriesText(text).replace(/[●○◎◆◇□■＊*･・]/g, '');
+    if (normalizedKeyword && key.includes(normalizedKeyword)) {
+      key = key.replace(normalizedKeyword, '');
+    }
+
+    if (!key || key.length < 3) {
+      key = normalizeSeriesText(title).replace(/[●○◎◆◇□■＊*･・]/g, '');
+    }
+
+    return key.slice(0, 120);
+  }
+
+  /**
+   * 系列结果去重并排序：先按章节序号，再按质量分
+   * @param {Array<{aid:number,title:string,url:string}>} items
+   * @param {string} keyword
+   * @returns {Array<{aid:number,title:string,url:string}>}
+   */
+  function dedupeAndSortSeriesItems(items, keyword) {
+    const grouped = new Map();
+
+    for (const item of items) {
+      const key = buildSeriesWorkKey(item.title, keyword) || `aid_${item.aid}`;
+      const order = extractSeriesOrderValue(item.title);
+      const affinity = Number(item._affinity || 0);
+      const qualityScore = getAlbumEntryTitleScore(item.title) + (matchesSeriesKeyword(item.title, keyword) ? 25 : 0) + affinity;
+      const current = { ...item, _order: order, _score: qualityScore };
+      const prev = grouped.get(key);
+
+      if (!prev) {
+        grouped.set(key, current);
+        continue;
+      }
+
+      if ((current._score || 0) > (prev._score || 0)) {
+        grouped.set(key, current);
+      } else if ((current._score || 0) === (prev._score || 0) && current.aid > prev.aid) {
+        grouped.set(key, current);
+      }
+    }
+
+    return Array.from(grouped.values())
+      .sort((a, b) => {
+        const ao = Number.isFinite(a._order) ? a._order : Number.POSITIVE_INFINITY;
+        const bo = Number.isFinite(b._order) ? b._order : Number.POSITIVE_INFINITY;
+        if (ao !== bo) return ao - bo;
+        if ((b._score || 0) !== (a._score || 0)) return (b._score || 0) - (a._score || 0);
+        return b.aid - a.aid;
+      })
+      .map(({ aid, title, url }) => ({ aid, title, url }));
   }
 
   /**
@@ -1011,20 +1928,88 @@
       const aid = extractAidFromHref(href);
       if (!aid) continue;
 
-      const text = (link.textContent || '').trim();
-      const title = text || (link.getAttribute('title') || '').trim() || (link.querySelector('img')?.getAttribute('alt') || '').trim();
+      const rawTitleCandidates = [
+        (link.getAttribute('title') || '').trim(),
+        (link.querySelector('img')?.getAttribute('alt') || '').trim(),
+        (link.textContent || '').trim()
+      ];
+      const title = rawTitleCandidates
+        .map((raw) => cleanupAlbumEntryTitle(raw))
+        .find((text) => text.length >= 2) || '';
+      const titleScore = getAlbumEntryTitleScore(title);
       const url = `${location.origin}/photos-index-aid-${aid}.html`;
 
       if (!map.has(aid)) {
-        map.set(aid, { aid, title, url });
-      } else if (title && !map.get(aid).title) {
-        map.set(aid, { aid, title, url });
+        map.set(aid, { aid, title, url, _score: titleScore });
+      } else if (title && titleScore > (map.get(aid)._score || 0)) {
+        map.set(aid, { aid, title, url, _score: titleScore });
       }
 
       if (map.size >= maxItems) break;
     }
 
-    return Array.from(map.values());
+    return Array.from(map.values()).map(({ aid, title, url }) => ({ aid, title, url }));
+  }
+
+  /**
+   * 从列表页中查找“后页”链接（通用）
+   * @param {Document} doc
+   * @returns {string|null}
+   */
+  function findNextPageUrl(doc) {
+    const links = Array.from(doc.querySelectorAll('a[href]'));
+    const next = links.find((a) => {
+      const text = String(a.textContent || '').trim();
+      if (/(?:後頁|后页|下一頁|下一页|next)/i.test(text)) return true;
+      const cls = String(a.className || '');
+      if (/next/i.test(cls)) return true;
+      return false;
+    });
+    if (!next) return null;
+    const href = next.getAttribute('href') || next.href || '';
+    if (!href) return null;
+    try {
+      return new URL(href, location.origin).toString();
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * 从某个列表入口分页抓取相册条目
+   * @param {string} startUrl
+   * @param {number} maxPages
+   * @param {number} maxItems
+   * @returns {Promise<Array<{aid:number,title:string,url:string}>>}
+   */
+  async function collectAlbumEntriesFromPagedUrl(startUrl, maxPages = 4, maxItems = 300) {
+    const map = new Map();
+    const visited = new Set();
+    let currentUrl = startUrl;
+
+    for (let page = 0; page < maxPages; page += 1) {
+      if (!currentUrl || visited.has(currentUrl)) break;
+      visited.add(currentUrl);
+
+      const doc = await fetchHtmlDocument(currentUrl);
+      if (!doc) break;
+
+      const pageItems = collectAlbumEntriesFromDoc(doc, maxItems);
+      for (const item of pageItems) {
+        const score = getAlbumEntryTitleScore(item.title);
+        const prev = map.get(item.aid);
+        if (!prev || score > (prev._score || 0)) {
+          map.set(item.aid, { ...item, _score: score });
+        }
+      }
+
+      if (map.size >= maxItems) break;
+      const nextUrl = findNextPageUrl(doc);
+      if (!nextUrl || visited.has(nextUrl)) break;
+      currentUrl = nextUrl;
+    }
+
+    return Array.from(map.values()).map(({ aid, title, url }) => ({ aid, title, url }));
   }
 
   /**
@@ -2133,8 +3118,10 @@
     if (existing) existing.remove();
 
     const currentTitle = extractCurrentAlbumTitle();
-    const seriesKeyword = String(customKeyword || extractSeriesKeyword(currentTitle)).trim();
-    if (!seriesKeyword && !forceShow) {
+    const keywordCandidates = buildSeriesKeywordCandidates(currentTitle, customKeyword);
+    const firstKeyword = keywordCandidates[0] || '';
+
+    if (!firstKeyword && !forceShow) {
       log('未检测到系列关键词，跳过系列作品面板');
       return;
     }
@@ -2149,53 +3136,149 @@
 
     const keywordEl = document.createElement('span');
     keywordEl.className = 'wnacg-series-keyword';
-    keywordEl.textContent = seriesKeyword || '未识别';
+    keywordEl.textContent = firstKeyword || '未识别';
     titleEl.appendChild(keywordEl);
 
     const loadingEl = document.createElement('div');
     loadingEl.className = 'wnacg-series-loading';
-    loadingEl.textContent = seriesKeyword ? '正在检索系列作品...' : '未识别到系列关键词，请使用“系列作品”按钮手动输入。';
+    loadingEl.textContent = firstKeyword ? '正在检索系列作品...' : '未识别到系列关键词，请使用“系列作品”按钮手动输入。';
+
+    const metaEl = document.createElement('div');
+    metaEl.className = 'wnacg-series-meta';
+    metaEl.textContent = '';
 
     panel.appendChild(titleEl);
+    panel.appendChild(metaEl);
     panel.appendChild(loadingEl);
 
     const anchor = document.getElementById('wnacg-album-oneclick')
       || document.querySelector('a[href*="download-index-aid-"]');
-    const host = anchor?.closest('.download_btns, .ads, .asTB') || anchor?.parentElement || document.body;
-    if (host && host.parentElement) {
+    const host = anchor?.closest('.wnacg-album-action-row, .download_btns, .ads, .asTB') || anchor?.parentElement || document.body;
+    const wideHost = document.querySelector('.asTB') || document.querySelector('.uwconn');
+    if (wideHost && wideHost.parentElement) {
+      wideHost.insertAdjacentElement('afterend', panel);
+    } else if (host && host.parentElement) {
       host.insertAdjacentElement('afterend', panel);
     } else {
       document.body.insertBefore(panel, document.body.firstChild);
     }
 
-    if (!seriesKeyword) return;
+    if (keywordCandidates.length === 0) return;
+
+    const authorTagCandidates = selectAuthorTagCandidates(currentTitle, keywordCandidates, 2);
+    if (authorTagCandidates.length > 0) {
+      log(`系列检索作者候选：${authorTagCandidates.map((item) => `${item.name}(${item.score})`).join(', ')}`);
+    }
 
     try {
-      const searchUrl = `${location.origin}/search/index.php?q=${encodeURIComponent(seriesKeyword)}`;
-      const searchDoc = await fetchHtmlDocument(searchUrl);
-      if (!searchDoc) {
-        loadingEl.textContent = '检索失败：请点击“系列作品”按钮手动重试。';
+      let selectedKeyword = '';
+      let items = [];
+      let rawMatchedCount = 0;
+      let hasRequestError = false;
+      let selectedSource = '';
+      let selectedAuthorTag = '';
+
+      const getValidKeywords = () => keywordCandidates.filter((candidate) => {
+        const normalizedKeyword = normalizeSeriesText(candidate);
+        const isCjkKeyword = /[\u3400-\u9fff]/.test(normalizedKeyword);
+        const minLen = isCjkKeyword ? 2 : 3;
+        return Boolean(normalizedKeyword && normalizedKeyword.length >= minLen);
+      });
+      const validKeywords = buildValidSeriesKeywords(getValidKeywords(), currentTitle, customKeyword);
+      if (validKeywords.length === 0) {
+        keywordEl.textContent = firstKeyword || '未识别';
+        loadingEl.textContent = '未识别到有效系列关键词，请点击“系列作品”按钮手动输入。';
         return;
       }
 
-      const normalizedKeyword = normalizeSeriesText(seriesKeyword);
-      const isCjkKeyword = /[\u3400-\u9fff]/.test(normalizedKeyword);
-      const minLen = isCjkKeyword ? 2 : 3;
+      // 优先：同作者标签页检索（用户要求）
+      for (const authorTag of authorTagCandidates) {
+        loadingEl.textContent = `正在同作者标签“${authorTag.name}”中检索...`;
 
-      if (!normalizedKeyword || normalizedKeyword.length < minLen) {
-        loadingEl.textContent = '关键词过短，无法稳定识别。请手动输入更精确关键词。';
-        return;
+        const authorItems = await collectAlbumEntriesFromPagedUrl(authorTag.url, 5, 420);
+        if (authorItems.length === 0) {
+          hasRequestError = true;
+          continue;
+        }
+
+        for (const candidate of validKeywords) {
+          keywordEl.textContent = candidate;
+          loadingEl.textContent = `正在同作者标签“${authorTag.name}”中匹配关键词：${candidate}`;
+
+          const rawMatched = authorItems
+            .filter((item) => item.aid !== currentAid)
+            .filter((item) => matchesSeriesKeyword(item.title, candidate));
+          const threshold = /[\u3400-\u9fff]/.test(normalizeSeriesText(candidate)) ? 62 : 68;
+          const affinityMatched = rawMatched
+            .map((item) => ({
+              ...item,
+              _affinity: computeSeriesAffinityScore(currentTitle, item.title, candidate)
+            }))
+            .filter((item) => item._affinity >= threshold);
+          const matched = dedupeAndSortSeriesItems(affinityMatched, candidate).slice(0, 16);
+
+          if (matched.length > 0) {
+            selectedKeyword = candidate;
+            items = matched;
+            rawMatchedCount = affinityMatched.length;
+            selectedSource = '同作者标签';
+            selectedAuthorTag = authorTag.name;
+            break;
+          }
+        }
+
+        if (items.length > 0) break;
       }
 
-      const items = collectAlbumEntriesFromDoc(searchDoc, 120)
-        .filter((item) => item.aid !== currentAid)
-        .filter((item) => normalizeSeriesText(item.title).includes(normalizedKeyword))
-        .slice(0, 16);
+      // 回退：站内搜索
+      if (items.length === 0) {
+        for (const candidate of validKeywords) {
+          keywordEl.textContent = candidate;
+          loadingEl.textContent = `正在站内搜索（关键词：${candidate}）...`;
+
+          const searchUrl = `${location.origin}/search/index.php?q=${encodeURIComponent(candidate)}`;
+          const searchDoc = await fetchHtmlDocument(searchUrl);
+          if (!searchDoc) {
+            hasRequestError = true;
+            continue;
+          }
+
+          const rawMatched = collectAlbumEntriesFromDoc(searchDoc, 160)
+            .filter((item) => item.aid !== currentAid)
+            .filter((item) => matchesSeriesKeyword(item.title, candidate));
+          const threshold = /[\u3400-\u9fff]/.test(normalizeSeriesText(candidate)) ? 62 : 68;
+          const affinityMatched = rawMatched
+            .map((item) => ({
+              ...item,
+              _affinity: computeSeriesAffinityScore(currentTitle, item.title, candidate)
+            }))
+            .filter((item) => item._affinity >= threshold);
+          const matched = dedupeAndSortSeriesItems(affinityMatched, candidate).slice(0, 16);
+
+          if (matched.length > 0) {
+            selectedKeyword = candidate;
+            items = matched;
+            rawMatchedCount = affinityMatched.length;
+            selectedSource = '站内搜索';
+            selectedAuthorTag = '';
+            break;
+          }
+        }
+      }
 
       if (items.length === 0) {
-        loadingEl.textContent = '未找到同系列作品。可点击“系列作品”按钮手动更换关键词。';
+        keywordEl.textContent = firstKeyword || '未识别';
+        loadingEl.textContent = hasRequestError
+          ? '检索失败：请点击“系列作品”按钮手动重试。'
+          : '未找到同系列作品。可点击“系列作品”按钮手动更换关键词。';
         return;
       }
+
+      keywordEl.textContent = selectedKeyword || firstKeyword;
+      const sourceText = selectedSource === '同作者标签'
+        ? `来源：${selectedSource}（${selectedAuthorTag}）`
+        : `来源：${selectedSource || '未知'}`;
+      metaEl.textContent = `${sourceText} · 已按章节优先排序，去重后 ${items.length} 部（原始 ${rawMatchedCount} 条）`;
 
       const list = document.createElement('ul');
       list.className = 'wnacg-series-list';
@@ -2209,14 +3292,21 @@
         a.textContent = item.title || `相册 ${item.aid}`;
         a.target = '_self';
 
+        const sub = document.createElement('div');
+        sub.className = 'wnacg-series-submeta';
+        const order = extractSeriesOrderValue(item.title);
+        const orderLabel = Number.isFinite(order) ? `序号 ${order}` : '序号 未识别';
+        sub.textContent = `${orderLabel} · aid ${item.aid}`;
+
         li.appendChild(a);
+        li.appendChild(sub);
         list.appendChild(li);
       }
 
       const loading = panel.querySelector('.wnacg-series-loading');
       if (loading) loading.remove();
       panel.appendChild(list);
-      log(`系列作品面板加载完成，共 ${items.length} 项`);
+      log(`系列作品面板加载完成，共 ${items.length} 项（来源：${selectedSource}${selectedAuthorTag ? `/${selectedAuthorTag}` : ''}，去重前 ${rawMatchedCount}，关键词：${selectedKeyword || firstKeyword}）`);
     } catch (error) {
       log(`加载系列作品失败: ${error.message}`, 'warn');
       loadingEl.textContent = `加载失败：${error.message}`;
@@ -2236,6 +3326,38 @@
   }
 
   /**
+   * 刷新进度面板标题（移动端最小化时显示进度摘要）
+   */
+  function refreshProgressPanelTitle() {
+    const titleEl = STATE.ui.progressTitle;
+    if (!titleEl) return;
+    const baseTitle = titleEl.dataset.baseTitle || 'WNACG 批量下载';
+    if (STATE.ui.minimized && isMobileUI) {
+      const short = String(STATE.ui.progressText?.textContent || '').trim().split(' ')[0] || '';
+      titleEl.textContent = short ? `${baseTitle} ${short}` : baseTitle;
+      return;
+    }
+    titleEl.textContent = baseTitle;
+  }
+
+  /**
+   * 统一切换进度面板最小化状态
+   * @param {boolean} minimized
+   */
+  function applyProgressPanelMinimized(minimized) {
+    STATE.ui.minimized = Boolean(minimized);
+    const hide = STATE.ui.minimized;
+    STATE.ui.progressPanel?.classList.toggle('wnacg-minimized', hide);
+    if (STATE.ui.progressBar) STATE.ui.progressBar.style.display = hide ? 'none' : '';
+    if (STATE.ui.progressText) STATE.ui.progressText.style.display = hide ? 'none' : '';
+    if (STATE.ui.logBox) STATE.ui.logBox.style.display = hide ? 'none' : '';
+    if (STATE.ui.pauseBtn) STATE.ui.pauseBtn.style.display = hide ? 'none' : '';
+    if (STATE.ui.clearQueueBtn) STATE.ui.clearQueueBtn.style.display = hide ? 'none' : '';
+    if (STATE.ui.minimizeBtn) STATE.ui.minimizeBtn.textContent = hide ? '展开' : '最小化';
+    refreshProgressPanelTitle();
+  }
+
+  /**
    * 创建/获取进度面板
    */
   function ensureProgressPanel() {
@@ -2248,6 +3370,7 @@
     const title = document.createElement('div');
     title.className = 'wnacg-progress-title';
     title.textContent = 'WNACG 批量下载';
+    title.dataset.baseTitle = 'WNACG 批量下载';
 
     const bar = document.createElement('div');
     bar.className = 'wnacg-progress-bar';
@@ -2259,9 +3382,12 @@
     const text = document.createElement('div');
     text.className = 'wnacg-progress-text';
     text.textContent = '0/0';
+    text.setAttribute('aria-live', 'polite');
 
     const logBox = document.createElement('div');
     logBox.className = 'wnacg-progress-log';
+    logBox.setAttribute('role', 'log');
+    logBox.setAttribute('aria-live', 'polite');
 
     const actions = document.createElement('div');
     actions.className = 'wnacg-progress-actions';
@@ -2271,11 +3397,11 @@
     pauseBtn.textContent = '暂停';
 
     const clearQueueBtn = document.createElement('button');
-    clearQueueBtn.className = 'wnacg-batch-btn';
+    clearQueueBtn.className = 'wnacg-batch-btn wnacg-btn-danger';
     clearQueueBtn.textContent = '清空队列';
 
     const minimizeBtn = document.createElement('button');
-    minimizeBtn.className = 'wnacg-batch-btn';
+    minimizeBtn.className = 'wnacg-batch-btn wnacg-btn-secondary';
     minimizeBtn.textContent = '最小化';
 
     actions.appendChild(pauseBtn);
@@ -2308,14 +3434,7 @@
     });
 
     minimizeBtn.addEventListener('click', () => {
-      STATE.ui.minimized = !STATE.ui.minimized;
-      const hide = STATE.ui.minimized;
-      bar.style.display = hide ? 'none' : '';
-      text.style.display = hide ? 'none' : '';
-      logBox.style.display = hide ? 'none' : '';
-      pauseBtn.style.display = hide ? 'none' : '';
-      clearQueueBtn.style.display = hide ? 'none' : '';
-      minimizeBtn.textContent = hide ? '展开' : '最小化';
+      applyProgressPanelMinimized(!STATE.ui.minimized);
     });
 
     clearQueueBtn.addEventListener('click', () => {
@@ -2334,11 +3453,21 @@
     });
 
     STATE.ui.progressPanel = panel;
+    STATE.ui.progressTitle = title;
+    STATE.ui.progressBar = bar;
     STATE.ui.progressFill = fill;
     STATE.ui.progressText = text;
     STATE.ui.logBox = logBox;
     STATE.ui.pauseBtn = pauseBtn;
     STATE.ui.clearQueueBtn = clearQueueBtn;
+    STATE.ui.minimizeBtn = minimizeBtn;
+
+    // 移动端默认最小化，避免遮挡内容
+    if (isMobileUI) {
+      applyProgressPanelMinimized(true);
+    } else {
+      refreshProgressPanelTitle();
+    }
   }
 
   /**
@@ -2353,6 +3482,7 @@
     const percent = total > 0 ? Math.round((current / total) * 100) : 0;
     STATE.ui.progressFill.style.width = `${percent}%`;
     STATE.ui.progressText.textContent = `${current}/${total} ${filename ? `- ${filename}` : ''}`;
+    refreshProgressPanelTitle();
   }
 
   /**
@@ -2360,6 +3490,9 @@
    */
   function createDownloadQueue() {
     ensureProgressPanel();
+    if (!isMobileUI && STATE.ui.minimized) {
+      applyProgressPanelMinimized(false);
+    }
     if (STATE.ui.logBox) STATE.ui.logBox.textContent = '';
     updateProgressPanel(0, 0, '');
     if (STATE.ui.pauseBtn) {
@@ -2423,11 +3556,11 @@
         toolbar.className = 'wnacg-shelf-toolbar';
 
         const btnSelectAll = document.createElement('button');
-        btnSelectAll.className = 'wnacg-batch-btn';
+        btnSelectAll.className = 'wnacg-batch-btn wnacg-btn-secondary';
         btnSelectAll.textContent = '全选';
 
         const btnInvert = document.createElement('button');
-        btnInvert.className = 'wnacg-batch-btn';
+        btnInvert.className = 'wnacg-batch-btn wnacg-btn-secondary';
         btnInvert.textContent = '反选';
 
         const btnBatchDownload = document.createElement('button');
@@ -3245,19 +4378,19 @@
         btnSelectMode.textContent = '进入选择模式';
 
         const btnExitSelectMode = document.createElement('button');
-        btnExitSelectMode.className = 'wnacg-batch-btn wnacg-exit-mode-btn';
+        btnExitSelectMode.className = 'wnacg-batch-btn wnacg-btn-danger wnacg-exit-mode-btn';
         btnExitSelectMode.textContent = '退出选择模式';
 
         const btnClearSelection = document.createElement('button');
-        btnClearSelection.className = 'wnacg-batch-btn';
+        btnClearSelection.className = 'wnacg-batch-btn wnacg-btn-secondary';
         btnClearSelection.textContent = '清空选择';
 
         const btnSelectAll = document.createElement('button');
-        btnSelectAll.className = 'wnacg-batch-btn';
+        btnSelectAll.className = 'wnacg-batch-btn wnacg-btn-secondary';
         btnSelectAll.textContent = '全选';
 
         const btnInvert = document.createElement('button');
-        btnInvert.className = 'wnacg-batch-btn';
+        btnInvert.className = 'wnacg-batch-btn wnacg-btn-secondary';
         btnInvert.textContent = '反选';
 
         const btnBatchDownload = document.createElement('button');
@@ -3578,6 +4711,31 @@
   }
 
   /**
+   * 确保相册页按钮在同一行动作栏中对齐
+   * @param {HTMLElement|null} referenceEl
+   * @returns {HTMLElement|null}
+   */
+  function ensureAlbumActionRow(referenceEl) {
+    if (!referenceEl) return null;
+    const row = referenceEl.closest('.wnacg-album-action-row');
+    if (row) return row;
+
+    const parent = referenceEl.parentElement;
+    if (!parent) return null;
+
+    if (parent.classList.contains('download_btns') || parent.querySelector('a[href*="download-index-aid-"]')) {
+      parent.classList.add('wnacg-album-action-row');
+      return parent;
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'wnacg-album-action-row';
+    parent.insertBefore(wrapper, referenceEl);
+    wrapper.appendChild(referenceEl);
+    return wrapper;
+  }
+
+  /**
    * 确保相册页“系列作品”手动检索按钮存在
    * @param {number} aid
    * @param {HTMLElement|null} referenceEl
@@ -3597,7 +4755,10 @@
     findBtn.href = 'javascript:void(0)';
     findBtn.textContent = '系列作品';
 
-    if (referenceEl && referenceEl.parentElement) {
+    const actionRow = ensureAlbumActionRow(referenceEl);
+    if (actionRow) {
+      actionRow.appendChild(findBtn);
+    } else if (referenceEl && referenceEl.parentElement) {
       referenceEl.insertAdjacentElement('afterend', findBtn);
     } else {
       document.body.insertBefore(findBtn, document.body.firstChild);
@@ -3634,6 +4795,7 @@
       if (document.getElementById('wnacg-album-oneclick')) {
         log('相册页一键下载按钮已存在，跳过注入');
         const oneClickExisting = document.getElementById('wnacg-album-oneclick');
+        ensureAlbumActionRow(oneClickExisting || document.querySelector('a[href*="download-index-aid-"]'));
         const popularityPanel = ensureAlbumPopularityPanel(oneClickExisting);
         bindAlbumPopularityRefresh(popularityPanel, aid);
         loadAndRenderAlbumPopularity(aid, popularityPanel, { forceRefresh: false });
@@ -3653,7 +4815,10 @@
       oneClick.href = 'javascript:void(0)';
       oneClick.textContent = '一键下载';
 
-      if (downloadBtn && downloadBtn.parentElement) {
+      const actionRow = ensureAlbumActionRow(downloadBtn);
+      if (actionRow) {
+        actionRow.appendChild(oneClick);
+      } else if (downloadBtn && downloadBtn.parentElement) {
         downloadBtn.insertAdjacentElement('afterend', oneClick);
       } else {
         document.body.insertBefore(oneClick, document.body.firstChild);
