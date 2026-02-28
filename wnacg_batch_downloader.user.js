@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         WNACG 批量下载器
 // @namespace    http://tampermonkey.net/
-// @version      0.4.2
+// @version      0.4.3
 // @description  为 WNACG 多镜像站点提供书架、相册和画廊页批量下载功能（含系列作品提示）
 // @license      MIT
 // @author       Auto Generated
@@ -33,7 +33,7 @@
   // ============ 全局配置 ============
   const CONFIG = {
     // 脚本版本
-    VERSION: '0.4.2',
+    VERSION: '0.4.3',
     // 页面类型常量
     PAGE_TYPE: {
       SHELF: 'shelf',      // 书架页
@@ -238,6 +238,11 @@
       .wnacg-album-oneclick-btn.wnacg-disabled {
         opacity: 0.6;
         pointer-events: none;
+      }
+
+      .wnacg-album-series-btn {
+        margin-left: 8px;
+        vertical-align: middle;
       }
 
       .wnacg-series-panel {
@@ -834,6 +839,26 @@
   }
 
   /**
+   * 手动搜索时的关键词建议（比自动识别更宽松）
+   * @param {string} title
+   * @returns {string}
+   */
+  function deriveSeriesKeywordSuggestion(title) {
+    let text = String(title || '').trim();
+    if (!text) return '';
+
+    text = text.replace(/^\s*(?:\[[^\]]+\]\s*)+/g, '');
+    text = text.split(/[|｜]/)[0].trim();
+    text = text.replace(/\s*(?:\[[^\]]+\]\s*)+$/g, '').trim();
+    text = text
+      .replace(/\s*(?:第?\s*\d+(?:\s*[-~～]\s*\d+)?\s*[话話回卷章部]|(?:vol|VOL)\.?\s*\d+(?:\.\d+)?|#\s*\d+|(?:part|Part)\s*\d+|[上中下前后後]\s*篇?)+\s*$/gi, '')
+      .replace(/[\s\-–—:：,，.。!?！？~～]+$/g, '')
+      .trim();
+
+    return text;
+  }
+
+  /**
    * 从列表/搜索页面中提取相册条目
    * @param {Document} doc
    * @param {number} maxItems
@@ -868,12 +893,13 @@
    * 在相册页渲染“系列作品”面板
    * @param {number} currentAid
    */
-  async function initAlbumSeriesPanel(currentAid) {
-    if (document.getElementById('wnacg-series-panel')) return;
+  async function initAlbumSeriesPanel(currentAid, customKeyword = '', forceShow = false) {
+    const existing = document.getElementById('wnacg-series-panel');
+    if (existing) existing.remove();
 
     const currentTitle = extractCurrentAlbumTitle();
-    const seriesKeyword = extractSeriesKeyword(currentTitle);
-    if (!seriesKeyword) {
+    const seriesKeyword = String(customKeyword || extractSeriesKeyword(currentTitle)).trim();
+    if (!seriesKeyword && !forceShow) {
       log('未检测到系列关键词，跳过系列作品面板');
       return;
     }
@@ -888,12 +914,12 @@
 
     const keywordEl = document.createElement('span');
     keywordEl.className = 'wnacg-series-keyword';
-    keywordEl.textContent = seriesKeyword;
+    keywordEl.textContent = seriesKeyword || '未识别';
     titleEl.appendChild(keywordEl);
 
     const loadingEl = document.createElement('div');
     loadingEl.className = 'wnacg-series-loading';
-    loadingEl.textContent = '正在检索系列作品...';
+    loadingEl.textContent = seriesKeyword ? '正在检索系列作品...' : '未识别到系列关键词，请使用“系列作品”按钮手动输入。';
 
     panel.appendChild(titleEl);
     panel.appendChild(loadingEl);
@@ -907,11 +933,13 @@
       document.body.insertBefore(panel, document.body.firstChild);
     }
 
+    if (!seriesKeyword) return;
+
     try {
       const searchUrl = `${location.origin}/search/index.php?q=${encodeURIComponent(seriesKeyword)}`;
       const searchDoc = await fetchHtmlDocument(searchUrl);
       if (!searchDoc) {
-        panel.remove();
+        loadingEl.textContent = '检索失败：请点击“系列作品”按钮手动重试。';
         return;
       }
 
@@ -920,7 +948,7 @@
       const minLen = isCjkKeyword ? 2 : 3;
 
       if (!normalizedKeyword || normalizedKeyword.length < minLen) {
-        panel.remove();
+        loadingEl.textContent = '关键词过短，无法稳定识别。请手动输入更精确关键词。';
         return;
       }
 
@@ -930,7 +958,7 @@
         .slice(0, 16);
 
       if (items.length === 0) {
-        panel.remove();
+        loadingEl.textContent = '未找到同系列作品。可点击“系列作品”按钮手动更换关键词。';
         return;
       }
 
@@ -956,7 +984,7 @@
       log(`系列作品面板加载完成，共 ${items.length} 项`);
     } catch (error) {
       log(`加载系列作品失败: ${error.message}`, 'warn');
-      panel.remove();
+      loadingEl.textContent = `加载失败：${error.message}`;
     }
   }
 
@@ -1696,6 +1724,47 @@
   }
 
   /**
+   * 确保相册页“系列作品”手动检索按钮存在
+   * @param {number} aid
+   * @param {HTMLElement|null} referenceEl
+   * @param {string} baseClassName
+   */
+  function ensureAlbumSeriesButton(aid, referenceEl, baseClassName = '') {
+    if (document.getElementById('wnacg-album-series-find')) return;
+
+    const classSet = new Set(['btn', 'wnacg-album-series-btn']);
+    for (const name of String(baseClassName || '').split(/\s+/)) {
+      if (name) classSet.add(name);
+    }
+
+    const findBtn = document.createElement('a');
+    findBtn.id = 'wnacg-album-series-find';
+    findBtn.className = Array.from(classSet).join(' ');
+    findBtn.href = 'javascript:void(0)';
+    findBtn.textContent = '系列作品';
+
+    if (referenceEl && referenceEl.parentElement) {
+      referenceEl.insertAdjacentElement('afterend', findBtn);
+    } else {
+      document.body.insertBefore(findBtn, document.body.firstChild);
+    }
+
+    findBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const title = extractCurrentAlbumTitle();
+      const suggested = extractSeriesKeyword(title) || deriveSeriesKeywordSuggestion(title);
+      const input = window.prompt('请输入系列关键词（例如：秘密教學）', suggested || '');
+      if (input === null) return;
+      const keyword = String(input).trim();
+      if (!keyword) {
+        alert('关键词不能为空');
+        return;
+      }
+      await initAlbumSeriesPanel(aid, keyword, true);
+    });
+  }
+
+  /**
    * 在此添加相册页特定的 DOM 操作、事件监听等
    */
   function initAlbumPage() {
@@ -1710,6 +1779,8 @@
 
       if (document.getElementById('wnacg-album-oneclick')) {
         log('相册页一键下载按钮已存在，跳过注入');
+        const oneClickExisting = document.getElementById('wnacg-album-oneclick');
+        ensureAlbumSeriesButton(aid, oneClickExisting, oneClickExisting?.className || 'btn');
         initAlbumSeriesPanel(aid);
         return;
       }
@@ -1746,6 +1817,8 @@
           oneClick.removeAttribute('aria-disabled');
         }
       });
+
+      ensureAlbumSeriesButton(aid, oneClick, oneClick.className);
 
       // 系列作品：仅在可识别系列关键词时显示
       initAlbumSeriesPanel(aid);
