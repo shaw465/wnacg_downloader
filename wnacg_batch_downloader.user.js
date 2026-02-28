@@ -1078,18 +1078,20 @@
       .filter((a) => extractAidFromHref(a.getAttribute('href') || a.href));
 
     const items = [];
-    const seenAids = new Set();
     const seenNodes = new Set();
 
     for (const anchor of albumAnchors) {
-      const aid = extractAidFromHref(anchor.getAttribute('href') || anchor.href);
-      if (!aid || seenAids.has(aid)) continue;
-
       const container = getGalleryContainerFromAnchor(anchor);
       if (!container || seenNodes.has(container)) continue;
 
+      // 只保留像“相册卡片”的容器，避免把导航/分页误识别成卡片
+      const hasAidLink = Boolean(
+        container.querySelector('a[href*="photos-index-aid-"], a[href*="photos-slist-aid-"], a[href*="photos-slide-aid-"]')
+      );
+      const hasCoverImage = Boolean(container.querySelector('img'));
+      if (!hasAidLink || !hasCoverImage) continue;
+
       container.classList.add('wnacg-gallery-item');
-      seenAids.add(aid);
       seenNodes.add(container);
       items.push(container);
     }
