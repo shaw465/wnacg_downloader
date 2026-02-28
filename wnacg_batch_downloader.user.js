@@ -137,10 +137,68 @@
 
   // 响应式：监听 media query 变化（平板旋转/分屏）
   let isMobileUI = IS_NARROW;
+  let mobileToolbarViewportBound = false;
+  let mobileToolbarResizeObserver = null;
+
+  function updateMobileToolbarBodyClass() {
+    if (!document.body) return;
+    const hasToolbar = Boolean(document.getElementById('wnacg-gallery-toolbar'));
+    document.body.classList.toggle('wnacg-mobile-has-toolbar', Boolean(isMobileUI && hasToolbar));
+  }
+
+  function syncGalleryToolbarOffset(toolbarEl = document.getElementById('wnacg-gallery-toolbar')) {
+    const root = document.documentElement;
+    if (!root) return;
+
+    if (!toolbarEl || !isMobileUI) {
+      root.style.removeProperty('--wnacg-toolbar-h');
+      return;
+    }
+
+    const rectHeight = Math.ceil(toolbarEl.getBoundingClientRect().height || 0);
+    const offsetHeight = Math.ceil(toolbarEl.offsetHeight || 0);
+    const toolbarHeight = Math.max(rectHeight, offsetHeight);
+    if (!Number.isFinite(toolbarHeight) || toolbarHeight <= 0) return;
+
+    root.style.setProperty('--wnacg-toolbar-h', `${toolbarHeight + 18}px`);
+  }
+
+  function handleMobileViewportChange() {
+    updateMobileToolbarBodyClass();
+    syncGalleryToolbarOffset();
+  }
+
+  function bindGalleryToolbarMobileOffset(toolbarEl) {
+    if (!toolbarEl) return;
+
+    updateMobileToolbarBodyClass();
+    syncGalleryToolbarOffset(toolbarEl);
+
+    if (window.ResizeObserver) {
+      try {
+        if (mobileToolbarResizeObserver) mobileToolbarResizeObserver.disconnect();
+        mobileToolbarResizeObserver = new ResizeObserver(() => {
+          syncGalleryToolbarOffset(toolbarEl);
+        });
+        mobileToolbarResizeObserver.observe(toolbarEl);
+      } catch {}
+    }
+
+    if (!mobileToolbarViewportBound) {
+      mobileToolbarViewportBound = true;
+      window.addEventListener('resize', handleMobileViewportChange, { passive: true });
+      window.addEventListener('orientationchange', handleMobileViewportChange, { passive: true });
+    }
+
+    requestAnimationFrame(() => syncGalleryToolbarOffset(toolbarEl));
+    setTimeout(() => syncGalleryToolbarOffset(toolbarEl), 120);
+  }
+
   const mql = window.matchMedia?.('(max-width: 768px)');
   if (mql && mql.addEventListener) {
     mql.addEventListener('change', (e) => {
       isMobileUI = e.matches;
+      handleMobileViewportChange();
     });
   }
   // ============ 工具函数 ============
@@ -974,6 +1032,8 @@
             .wnacg-progress-panel.wnacg-minimized {
               left: auto;
               right: 8px;
+              top: calc(env(safe-area-inset-top, 0px) + 8px);
+              bottom: auto;
               width: auto;
               min-width: 0;
               max-width: 72vw;
@@ -3490,7 +3550,9 @@
    */
   function createDownloadQueue() {
     ensureProgressPanel();
-    if (!isMobileUI && STATE.ui.minimized) {
+    if (isMobileUI) {
+      applyProgressPanelMinimized(true);
+    } else if (STATE.ui.minimized) {
       applyProgressPanelMinimized(false);
     }
     if (STATE.ui.logBox) STATE.ui.logBox.textContent = '';
@@ -3518,6 +3580,10 @@
     });
     queue.on('error', (data) => {
       appendPanelLog(`错误 aid=${data.aid}: ${data.message} (重试 ${data.retryCount})`);
+      if (isMobileUI && STATE.ui.minimized) {
+        applyProgressPanelMinimized(false);
+        appendPanelLog('检测到错误，已自动展开面板');
+      }
     });
 
     return queue;
@@ -4448,10 +4514,8 @@
           }
         }
 
-        // 移动端：给 body 加 class 防止工具栏遮挡内容
-        if (IS_MOBILE) {
-          document.body.classList.add('wnacg-mobile-has-toolbar');
-        }
+        // 根据工具栏真实高度动态设置底部安全留白，避免遮挡翻页区
+        bindGalleryToolbarMobileOffset(toolbar);
 
         const getCheckboxes = () => Array.from(document.querySelectorAll('input.wnacg-gallery-checkbox'));
 
