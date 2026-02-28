@@ -16,7 +16,10 @@ Tampermonkey 用户脚本，为 WNACG 多镜像站点提供批量下载功能。
 ## 安装
 
 1. 安装 [Tampermonkey](https://www.tampermonkey.net/) 浏览器扩展
-2. 点击安装脚本，或手动将 `wnacg_batch_downloader.user.js` 内容粘贴到 Tampermonkey 新建脚本中
+2. 点击下方一键安装按钮
+3. 如未自动唤起安装，可手动将 `wnacg_batch_downloader.user.js` 内容粘贴到 Tampermonkey 新建脚本中
+
+[![Install Script](https://img.shields.io/badge/Tampermonkey-一键安装脚本-2ea44f?style=for-the-badge)](https://raw.githubusercontent.com/shaw465/wnacg_downloader/master/wnacg_batch_downloader.user.js)
 
 ## License
 

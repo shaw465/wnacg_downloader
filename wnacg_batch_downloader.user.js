@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         WNACG 批量下载器
 // @namespace    http://tampermonkey.net/
-// @version      0.4.0
-// @description  为 WNACG 多镜像站点提供书架、相册和画廊页批量下载功能（支持移动端）
+// @version      0.4.1
+// @description  为 WNACG 多镜像站点提供书架、相册和画廊页批量下载功能（兼容移动阅读页）
 // @license      MIT
 // @author       Auto Generated
 // @match        *://wnacg.com/*
@@ -33,7 +33,7 @@
   // ============ 全局配置 ============
   const CONFIG = {
     // 脚本版本
-    VERSION: '0.4.0',
+    VERSION: '0.4.1',
     // 页面类型常量
     PAGE_TYPE: {
       SHELF: 'shelf',      // 书架页
@@ -134,18 +134,19 @@
    * @returns {string|null} 页面类型（'shelf'、'album'、'gallery'）或 null
    */
   function detectPageType() {
-    const href = location.href;
-    
-    if (href.includes('users-users_fav')) {
+    const href = String(location.href || '').toLowerCase();
+    const path = String(location.pathname || '').toLowerCase();
+
+    if (href.includes('users-users_fav') || href.includes('/users/users_fav')) {
       return CONFIG.PAGE_TYPE.SHELF;
     }
-    
-    if (href.includes('photos-index-aid-')) {
+
+    // 相册详情兼容：网页版 photos-index / 移动阅读页 photos-slist/photos-slide
+    if (/photos-(?:index|slist|slide)-aid-\d+(?:\.html)?/i.test(href)) {
       return CONFIG.PAGE_TYPE.ALBUM;
     }
 
-    // 画廊页：首页、更新/分类/排行、搜索
-    const path = location.pathname;
+    // 画廊页：首页、更新/分类/排行、搜索（兼容静态路由和 /search/index.php）
     if (path === '/' || path === '/index.html') {
       return CONFIG.PAGE_TYPE.GALLERY;
     }
@@ -155,7 +156,15 @@
     if (/^\/search(?:-[^/]+)?\.html$/.test(path)) {
       return CONFIG.PAGE_TYPE.GALLERY;
     }
-    
+    if (path.startsWith('/search/') || path === '/search/index.php') {
+      return CONFIG.PAGE_TYPE.GALLERY;
+    }
+
+    // URL 无法命中时做一次 DOM 兜底，避免不同模板失配
+    if (document.querySelector('a[href*="photos-index-aid-"], a[href*="photos-slist-aid-"], a[href*="photos-slide-aid-"]')) {
+      return CONFIG.PAGE_TYPE.GALLERY;
+    }
+
     return null;
   }
 
@@ -219,6 +228,16 @@
       .wnacg-batch-btn:disabled {
         background-color: #cccccc;
         cursor: not-allowed;
+      }
+
+      .wnacg-album-oneclick-btn {
+        margin-left: 8px;
+        vertical-align: middle;
+      }
+
+      .wnacg-album-oneclick-btn.wnacg-disabled {
+        opacity: 0.6;
+        pointer-events: none;
       }
       
       .wnacg-progress-panel {
@@ -355,12 +374,14 @@
           accent-color: #4CAF50;
         }
 
-         li.gallary_item {
+         li.gallary_item,
+         .wnacg-gallery-item {
            position: relative;
          }
 
          /* 选择模式下的卡片选中标记 */
-         li.gallary_item.wnacg-selected .pic_box::after {
+         li.gallary_item.wnacg-selected .pic_box::after,
+         .wnacg-gallery-item.wnacg-selected .pic_box::after {
            content: '✓';
            position: absolute;
            top: 0; left: 0; right: 0; bottom: 0;
@@ -375,8 +396,25 @@
            z-index: 5;
          }
 
-         li.gallary_item .pic_box {
+         .wnacg-gallery-item.wnacg-selected::after {
+           content: '✓';
+           position: absolute;
+           top: 0; left: 0; right: 0; bottom: 0;
+           background: rgba(76, 175, 80, 0.28);
+           display: flex;
+           align-items: center;
+           justify-content: center;
+           font-size: 40px;
+           color: #fff;
+           text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+           pointer-events: none;
+           z-index: 4;
+         }
+
+         li.gallary_item .pic_box,
+         .wnacg-gallery-item .pic_box {
            position: relative;
+           z-index: 6;
          }
 
          /* 选择模式按钮激活状态 */
@@ -387,7 +425,8 @@
          }
 
           /* 选择模式下封面的 cursor */
-          body.wnacg-select-mode li.gallary_item .pic_box {
+          body.wnacg-select-mode li.gallary_item .pic_box,
+          body.wnacg-select-mode .wnacg-gallery-item .pic_box {
             cursor: pointer;
           }
 
@@ -507,7 +546,7 @@
     if (!href) return null;
 
     const raw = String(href);
-    const match = raw.match(/photos-index-aid-(\d+)\.html/i);
+    const match = raw.match(/photos-(?:index|slist|slide)-aid-(\d+)(?:\.html)?/i);
     if (!match) return null;
 
     const aid = Number(match[1]);
@@ -675,7 +714,7 @@
    * @returns {number|null}
    */
   function extractAidFromLocation() {
-    const m = String(location.href).match(/photos-index-aid-(\d+)\.html/i);
+    const m = String(location.href).match(/photos-(?:index|slist|slide)-aid-(\d+)(?:\.html)?/i);
     if (!m) return null;
     const aid = Number(m[1]);
     return Number.isFinite(aid) ? aid : null;
@@ -995,6 +1034,103 @@
   }
 
   /**
+   * 从相册链接向上查找合适的画廊卡片容器
+   * @param {HTMLAnchorElement} anchor
+   * @returns {HTMLElement|null}
+   */
+  function getGalleryContainerFromAnchor(anchor) {
+    if (!anchor || !anchor.closest) return null;
+
+    const selectors = [
+      'li.gallary_item',
+      '.gallary_item',
+      '.gallery-item',
+      '.album-item',
+      'li',
+      'article',
+      '.item'
+    ];
+
+    for (const selector of selectors) {
+      const node = anchor.closest(selector);
+      if (!node) continue;
+      if (node === document.body || node === document.documentElement) continue;
+      return node;
+    }
+
+    return anchor.parentElement;
+  }
+
+  /**
+   * 收集画廊卡片（优先传统模板，失败时回退到“按链接推断容器”）
+   * @returns {HTMLElement[]}
+   */
+  function findGalleryItems() {
+    const strictItems = Array.from(document.querySelectorAll('li.gallary_item'));
+    if (strictItems.length > 0) {
+      for (const item of strictItems) {
+        item.classList.add('wnacg-gallery-item');
+      }
+      return strictItems;
+    }
+
+    const albumAnchors = Array.from(document.querySelectorAll('a[href]'))
+      .filter((a) => extractAidFromHref(a.getAttribute('href') || a.href));
+
+    const items = [];
+    const seenAids = new Set();
+    const seenNodes = new Set();
+
+    for (const anchor of albumAnchors) {
+      const aid = extractAidFromHref(anchor.getAttribute('href') || anchor.href);
+      if (!aid || seenAids.has(aid)) continue;
+
+      const container = getGalleryContainerFromAnchor(anchor);
+      if (!container || seenNodes.has(container)) continue;
+
+      container.classList.add('wnacg-gallery-item');
+      seenAids.add(aid);
+      seenNodes.add(container);
+      items.push(container);
+    }
+
+    return items;
+  }
+
+  /**
+   * 获取当前页面中指定 aid 的所有画廊 checkbox
+   * @param {number} aid
+   * @returns {HTMLInputElement[]}
+   */
+  function getGalleryCheckboxesByAid(aid) {
+    const safeAid = String(Number(aid));
+    return Array.from(document.querySelectorAll(`input.wnacg-gallery-checkbox[data-aid="${safeAid}"]`));
+  }
+
+  /**
+   * 按 aid 同步所有重复卡片状态，避免同一相册多处出现时状态不一致
+   * @param {number} aid
+   * @param {boolean} selected
+   */
+  function setGalleryAidSelected(aid, selected) {
+    const isSelected = Boolean(selected);
+    const checkboxes = getGalleryCheckboxesByAid(aid);
+
+    for (const cb of checkboxes) {
+      cb.checked = isSelected;
+      cb.closest('.wnacg-gallery-item')?.classList.toggle('wnacg-selected', isSelected);
+    }
+
+    if (isSelected) {
+      addStoredAid(aid);
+    } else {
+      removeStoredAid(aid);
+    }
+
+    updateGallerySelectedCount();
+  }
+
+  /**
    * 切换画廊卡片的选中状态（复用函数）
    * @param {HTMLElement} li 卡片 li 元素
    * @param {HTMLInputElement} checkbox 对应的 checkbox
@@ -1004,15 +1140,8 @@
   function toggleGalleryItemSelection(li, checkbox, aid, forceState) {
     const isSelected = typeof forceState === 'boolean'
       ? forceState
-      : !li.classList.contains('wnacg-selected');
-    li.classList.toggle('wnacg-selected', isSelected);
-    checkbox.checked = isSelected;
-    if (isSelected) {
-      addStoredAid(aid);
-    } else {
-      removeStoredAid(aid);
-    }
-    updateGallerySelectedCount();
+      : !isAidStored(aid);
+    setGalleryAidSelected(aid, isSelected);
   }
 
   /**
@@ -1033,8 +1162,8 @@
     log('初始化画廊页...');
 
     try {
-      // 收集所有 li.gallary_item 中的相册卡片
-      const galleryItems = Array.from(document.querySelectorAll('li.gallary_item'));
+      // 收集画廊卡片（兼容不同模板）
+      const galleryItems = findGalleryItems();
       if (galleryItems.length === 0) {
         log('未在当前页面找到画廊卡片', 'warn');
         return;
@@ -1088,8 +1217,8 @@
         toolbar.appendChild(modeIndicator);
         toolbar.appendChild(count);
 
-        // 插入到第一个画廊区块之前
-        const firstWrap = document.querySelector('div.gallary_wrap');
+        // 插入到第一个画廊区块之前（无 gallary_wrap 时回退到第一张卡片）
+        const firstWrap = document.querySelector('div.gallary_wrap') || galleryItems[0];
         if (firstWrap && firstWrap.parentElement) {
           firstWrap.parentElement.insertBefore(toolbar, firstWrap);
         } else {
@@ -1134,34 +1263,30 @@
         btnClearSelection.addEventListener('click', () => {
           clearStoredAids();
           for (const cb of getCheckboxes()) cb.checked = false;
-          for (const li of document.querySelectorAll('li.gallary_item.wnacg-selected')) {
+          for (const li of document.querySelectorAll('.wnacg-gallery-item.wnacg-selected')) {
             li.classList.remove('wnacg-selected');
           }
           updateGallerySelectedCount();
         });
 
         btnSelectAll.addEventListener('click', () => {
-          for (const cb of getCheckboxes()) {
-            cb.checked = true;
-            addStoredAid(Number(cb.dataset.aid));
-            cb.closest('li.gallary_item')?.classList.add('wnacg-selected');
-          }
-          updateGallerySelectedCount();
+          const aids = Array.from(new Set(
+            getCheckboxes()
+              .map((cb) => Number(cb.dataset.aid))
+              .filter((x) => Number.isFinite(x))
+          ));
+          for (const aid of aids) setGalleryAidSelected(aid, true);
         });
 
         btnInvert.addEventListener('click', () => {
-          for (const cb of getCheckboxes()) {
-            cb.checked = !cb.checked;
-            const aid = Number(cb.dataset.aid);
-            if (cb.checked) {
-              addStoredAid(aid);
-              cb.closest('li.gallary_item')?.classList.add('wnacg-selected');
-            } else {
-              removeStoredAid(aid);
-              cb.closest('li.gallary_item')?.classList.remove('wnacg-selected');
-            }
+          const aids = Array.from(new Set(
+            getCheckboxes()
+              .map((cb) => Number(cb.dataset.aid))
+              .filter((x) => Number.isFinite(x))
+          ));
+          for (const aid of aids) {
+            setGalleryAidSelected(aid, !isAidStored(aid));
           }
-          updateGallerySelectedCount();
         });
 
         btnBatchDownload.addEventListener('click', async () => {
@@ -1195,7 +1320,7 @@
             // 下载完成后清空选择
             clearStoredAids();
             for (const cb of getCheckboxes()) cb.checked = false;
-            for (const li of document.querySelectorAll('li.gallary_item.wnacg-selected')) {
+            for (const li of document.querySelectorAll('.wnacg-gallery-item.wnacg-selected')) {
               li.classList.remove('wnacg-selected');
             }
             updateGallerySelectedCount();
@@ -1212,9 +1337,12 @@
       let injectedCount = 0;
       for (const li of galleryItems) {
         if (li.dataset.wnacgGalleryInjected === '1') continue;
+        li.classList.add('wnacg-gallery-item');
 
         // 从卡片内链接提取 aid
-        const link = li.querySelector('a[href*="photos-index-aid-"]');
+        const link = li.querySelector(
+          'a[href*="photos-index-aid-"], a[href*="photos-slist-aid-"], a[href*="photos-slide-aid-"]'
+        );
         if (!link) continue; // 跳过无法提取 aid 的卡片（可能是广告）
 
         const aid = extractAidFromHref(link.getAttribute('href'));
@@ -1232,25 +1360,18 @@
           e.stopPropagation();
         });
         checkbox.addEventListener('change', () => {
-          if (checkbox.checked) {
-            addStoredAid(Number(checkbox.dataset.aid));
-            li.classList.add('wnacg-selected');
-          } else {
-            removeStoredAid(Number(checkbox.dataset.aid));
-            li.classList.remove('wnacg-selected');
-          }
-          updateGallerySelectedCount();
+          setGalleryAidSelected(aid, checkbox.checked);
         });
 
-        // pic_box 交互：选择模式下点击 toggle + 移动端长按进入选择模式
-        const picBox = li.querySelector('div.pic_box');
-        if (picBox) {
+        // 卡片交互：选择模式下点击 toggle + 移动端长按进入选择模式
+        const interactionTarget = li.querySelector('div.pic_box, .pic_box') || link;
+        if (interactionTarget) {
           // 移动端：添加长按目标 CSS class
           if (IS_MOBILE) {
-            picBox.classList.add('wnacg-longpress-target');
+            interactionTarget.classList.add('wnacg-longpress-target');
           }
 
-          // 长按状态（per-picBox）
+          // 长按状态（per-target）
           let longPressTriggered = false;
           let pressTimer = null;
           let pressStart = null;
@@ -1263,7 +1384,7 @@
           }
 
           // Pointer Events 长按（仅移动端触控/笔）
-          picBox.addEventListener('pointerdown', (e) => {
+          interactionTarget.addEventListener('pointerdown', (e) => {
             if (!IS_MOBILE) return;
             if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
             longPressTriggered = false;
@@ -1277,7 +1398,7 @@
             }, LONG_PRESS_MS);
           });
 
-          picBox.addEventListener('pointermove', (e) => {
+          interactionTarget.addEventListener('pointermove', (e) => {
             if (!pressStart) return;
             if (Math.abs(e.clientX - pressStart.x) > MOVE_THRESHOLD ||
                 Math.abs(e.clientY - pressStart.y) > MOVE_THRESHOLD) {
@@ -1286,16 +1407,16 @@
           });
 
           ['pointerup', 'pointercancel'].forEach(evt =>
-            picBox.addEventListener(evt, () => { clearPressTimer(); })
+            interactionTarget.addEventListener(evt, () => { clearPressTimer(); })
           );
 
           // 阻止移动端长按原生 context menu
-          picBox.addEventListener('contextmenu', (e) => {
+          interactionTarget.addEventListener('contextmenu', (e) => {
             if (IS_MOBILE) e.preventDefault();
           });
 
           // flag+click 模式：阻止长按后 / 选择模式下的导航跳转
-          const picLink = picBox.querySelector('a');
+          const picLink = link;
           if (picLink) {
             picLink.addEventListener('click', (e) => {
               if (longPressTriggered) {
@@ -1311,15 +1432,15 @@
               }
             }, true); // capture phase
           }
-        } // end if (picBox)
+        } // end if (interactionTarget)
+
+        li.appendChild(checkbox);
 
         // 从 sessionStorage 恢复已选状态
         if (isAidStored(aid)) {
-          checkbox.checked = true;
-          li.classList.add('wnacg-selected');
+          setGalleryAidSelected(aid, true);
         }
 
-        li.appendChild(checkbox);
         injectedCount++;
       }
 
@@ -1350,10 +1471,15 @@
         return;
       }
 
-      const downloadBtn = document.querySelector('a.btn[href*="download-index-aid-"]');
-      const oneClick = document.createElement('button');
+      const downloadBtn = document.querySelector('a.btn[href*="download-index-aid-"], a[href*="download-index-aid-"]');
+      const oneClick = document.createElement('a');
       oneClick.id = 'wnacg-album-oneclick';
-      oneClick.className = 'wnacg-batch-btn';
+      const classSet = new Set(['btn', 'wnacg-album-oneclick-btn']);
+      for (const name of String(downloadBtn?.className || '').split(/\s+/)) {
+        if (name) classSet.add(name);
+      }
+      oneClick.className = Array.from(classSet).join(' ');
+      oneClick.href = 'javascript:void(0)';
       oneClick.textContent = '一键下载';
 
       if (downloadBtn && downloadBtn.parentElement) {
@@ -1362,15 +1488,19 @@
         document.body.insertBefore(oneClick, document.body.firstChild);
       }
 
-      oneClick.addEventListener('click', async () => {
-        oneClick.disabled = true;
+      oneClick.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (oneClick.classList.contains('wnacg-disabled')) return;
+        oneClick.classList.add('wnacg-disabled');
+        oneClick.setAttribute('aria-disabled', 'true');
         try {
           const queue = createDownloadQueue();
           queue.addTask(aid);
           appendPanelLog(`开始下载相册 aid=${aid}`);
           await queue.start();
         } finally {
-          oneClick.disabled = false;
+          oneClick.classList.remove('wnacg-disabled');
+          oneClick.removeAttribute('aria-disabled');
         }
       });
 
@@ -1450,6 +1580,7 @@
           GM_download({
             url: url,
             name: safeName,
+            saveAs: false,
             onload: function() {
               log(`下载完成: ${safeName}`);
               resolve(true);
@@ -1469,7 +1600,7 @@
         }
       } else {
         // 降级方案：使用 <a> 标签
-        log('GM_download 不可用，使用 <a> 标签下载', 'warn');
+        log('GM_download 不可用，使用 <a> 标签下载（浏览器可能会逐个弹确认）', 'warn');
         try {
           const link = document.createElement('a');
           link.href = url;
