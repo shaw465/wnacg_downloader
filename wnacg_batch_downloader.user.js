@@ -195,11 +195,14 @@
   }
 
   const mql = window.matchMedia?.('(max-width: 768px)');
-  if (mql && mql.addEventListener) {
-    mql.addEventListener('change', (e) => {
-      isMobileUI = e.matches;
-      handleMobileViewportChange();
-    });
+  const handleMobileMediaQueryChange = (e) => {
+    isMobileUI = e.matches;
+    handleMobileViewportChange();
+  };
+  if (mql && typeof mql.addEventListener === 'function') {
+    mql.addEventListener('change', handleMobileMediaQueryChange);
+  } else if (mql && typeof mql.addListener === 'function') {
+    mql.addListener(handleMobileMediaQueryChange);
   }
   // ============ 工具函数 ============
   
@@ -404,7 +407,8 @@
         padding: 10px;
       }
 
-      .wnacg-album-action-row > a {
+      .wnacg-album-action-row > a,
+      .wnacg-album-action-row > button {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -743,9 +747,67 @@
          margin-top: 10px;
        }
 
-       .wnacg-progress-actions button {
-          flex: 1;
+      .wnacg-progress-actions button {
+         flex: 1;
         }
+
+      .wnacg-dialog-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.4);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        box-sizing: border-box;
+      }
+
+      .wnacg-dialog {
+        width: min(92vw, 420px);
+        background: #fff;
+        border: 1px solid var(--wnacg-border);
+        border-radius: 14px;
+        box-shadow: var(--wnacg-shadow-md);
+        padding: 14px;
+      }
+
+      .wnacg-dialog-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--wnacg-text-main);
+      }
+
+      .wnacg-dialog-message {
+        margin-top: 10px;
+        color: #365468;
+        line-height: 1.55;
+        font-size: 13px;
+        white-space: pre-wrap;
+      }
+
+      .wnacg-dialog-input {
+        width: 100%;
+        margin-top: 10px;
+        border: 1px solid #c9d9e6;
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 14px;
+        outline: none;
+        box-sizing: border-box;
+      }
+
+      .wnacg-dialog-input:focus {
+        border-color: #0ea5e9;
+        box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.18);
+      }
+
+      .wnacg-dialog-actions {
+        margin-top: 12px;
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+      }
 
         .wnacg-gallery-toolbar {
           display: flex;
@@ -916,7 +978,7 @@
           /* ============ 移动端适配 ============ */
           @media (max-width: 768px) {
             :root {
-              --wnacg-toolbar-h: 160px;
+              --wnacg-toolbar-h: 136px;
               --wnacg-sa-bottom: env(safe-area-inset-bottom, 0px);
             }
 
@@ -943,7 +1005,7 @@
 
             .wnacg-series-panel {
               margin: 10px 0 8px;
-              padding: 10px;
+              padding: 8px;
               border-radius: 10px;
             }
 
@@ -981,10 +1043,10 @@
               padding: 10px;
               flex-wrap: wrap;
               justify-content: flex-start;
-              gap: 8px;
+              gap: 6px;
               box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.2);
               z-index: 9998;
-              max-height: min(52vh, 260px);
+              max-height: min(45vh, 220px);
               overflow-y: auto;
               -webkit-overflow-scrolling: touch;
             }
@@ -1021,7 +1083,7 @@
               top: auto;
               width: min(92vw, 360px);
               border-radius: 14px;
-              max-height: 52vh;
+              max-height: 44vh;
               overflow-y: auto;
             }
             /* 工具栏存在时进度面板偏移 */
@@ -1036,7 +1098,7 @@
               bottom: auto;
               width: auto;
               min-width: 0;
-              max-width: 72vw;
+              max-width: 65vw;
               border-radius: 999px;
               padding: 8px 10px;
             }
@@ -1138,22 +1200,29 @@
       iframe.src = url;
 
       let done = false;
+      let timer = null;
       const finish = (doc) => {
         if (done) return;
         done = true;
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+        iframe.onload = null;
+        iframe.onerror = null;
         try {
           iframe.remove();
         } catch {}
         resolve(doc || null);
       };
 
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         log(`请求分页超时 (${CONFIG.DOWNLOAD.TIMEOUT}ms)`, 'error');
         finish(null);
       }, CONFIG.DOWNLOAD.TIMEOUT);
 
       iframe.onload = () => {
-        clearTimeout(timer);
+        if (done) return;
         try {
           const doc = iframe.contentDocument;
           if (!doc || !doc.documentElement) {
@@ -1175,7 +1244,7 @@
       };
 
       iframe.onerror = () => {
-        clearTimeout(timer);
+        if (done) return;
         log('分页 iframe 加载失败', 'error');
         finish(null);
       };
@@ -3434,6 +3503,11 @@
 
     const bar = document.createElement('div');
     bar.className = 'wnacg-progress-bar';
+    bar.setAttribute('role', 'progressbar');
+    bar.setAttribute('aria-label', '下载进度');
+    bar.setAttribute('aria-valuemin', '0');
+    bar.setAttribute('aria-valuemax', '100');
+    bar.setAttribute('aria-valuenow', '0');
     const fill = document.createElement('div');
     fill.className = 'wnacg-progress-fill';
     fill.style.width = '0%';
@@ -3455,14 +3529,17 @@
     const pauseBtn = document.createElement('button');
     pauseBtn.className = 'wnacg-batch-btn';
     pauseBtn.textContent = '暂停';
+    pauseBtn.setAttribute('aria-label', '暂停或继续下载队列');
 
     const clearQueueBtn = document.createElement('button');
     clearQueueBtn.className = 'wnacg-batch-btn wnacg-btn-danger';
     clearQueueBtn.textContent = '清空队列';
+    clearQueueBtn.setAttribute('aria-label', '清空下载队列');
 
     const minimizeBtn = document.createElement('button');
     minimizeBtn.className = 'wnacg-batch-btn wnacg-btn-secondary';
     minimizeBtn.textContent = '最小化';
+    minimizeBtn.setAttribute('aria-label', '最小化或展开下载面板');
 
     actions.appendChild(pauseBtn);
     actions.appendChild(clearQueueBtn);
@@ -3541,6 +3618,9 @@
     if (!STATE.ui.progressFill || !STATE.ui.progressText) return;
     const percent = total > 0 ? Math.round((current / total) * 100) : 0;
     STATE.ui.progressFill.style.width = `${percent}%`;
+    if (STATE.ui.progressBar) {
+      STATE.ui.progressBar.setAttribute('aria-valuenow', String(percent));
+    }
     STATE.ui.progressText.textContent = `${current}/${total} ${filename ? `- ${filename}` : ''}`;
     refreshProgressPanelTitle();
   }
@@ -3587,6 +3667,138 @@
     });
 
     return queue;
+  }
+
+  /**
+   * 统一的轻量弹层（替代 alert/confirm/prompt）
+   * @param {{type:'alert'|'confirm'|'prompt',title?:string,message:string,defaultValue?:string,placeholder?:string}} options
+   * @returns {Promise<boolean|string|null>}
+   */
+  function showInlineDialog(options) {
+    const {
+      type = 'alert',
+      title = '提示',
+      message = '',
+      defaultValue = '',
+      placeholder = ''
+    } = options || {};
+
+    return new Promise((resolve) => {
+      const backdrop = document.createElement('div');
+      backdrop.className = 'wnacg-dialog-backdrop';
+
+      const panel = document.createElement('div');
+      panel.className = 'wnacg-dialog';
+      panel.setAttribute('role', 'dialog');
+      panel.setAttribute('aria-modal', 'true');
+
+      const titleEl = document.createElement('div');
+      titleEl.className = 'wnacg-dialog-title';
+      titleEl.textContent = title;
+
+      const msgEl = document.createElement('div');
+      msgEl.className = 'wnacg-dialog-message';
+      msgEl.textContent = String(message || '');
+
+      const actions = document.createElement('div');
+      actions.className = 'wnacg-dialog-actions';
+
+      let inputEl = null;
+      if (type === 'prompt') {
+        inputEl = document.createElement('input');
+        inputEl.type = 'text';
+        inputEl.className = 'wnacg-dialog-input';
+        inputEl.value = String(defaultValue || '');
+        if (placeholder) inputEl.placeholder = placeholder;
+        inputEl.setAttribute('aria-label', title);
+        panel.appendChild(titleEl);
+        panel.appendChild(msgEl);
+        panel.appendChild(inputEl);
+      } else {
+        panel.appendChild(titleEl);
+        panel.appendChild(msgEl);
+      }
+
+      const close = (result) => {
+        try {
+          document.removeEventListener('keydown', onKeydown, true);
+          backdrop.remove();
+        } catch {}
+        resolve(result);
+      };
+
+      const okBtn = document.createElement('button');
+      okBtn.type = 'button';
+      okBtn.className = 'wnacg-batch-btn';
+      okBtn.textContent = type === 'alert' ? '知道了' : '确定';
+      okBtn.addEventListener('click', () => {
+        if (type === 'prompt') {
+          close(inputEl ? inputEl.value : '');
+        } else {
+          close(true);
+        }
+      });
+
+      if (type === 'confirm' || type === 'prompt') {
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'wnacg-batch-btn wnacg-btn-secondary';
+        cancelBtn.textContent = '取消';
+        cancelBtn.addEventListener('click', () => close(null));
+        actions.appendChild(cancelBtn);
+      }
+
+      actions.appendChild(okBtn);
+      panel.appendChild(actions);
+      backdrop.appendChild(panel);
+
+      const onKeydown = (e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          close(type === 'alert' ? true : null);
+        } else if (e.key === 'Enter' && type === 'prompt' && document.activeElement === inputEl) {
+          e.preventDefault();
+          close(inputEl ? inputEl.value : '');
+        }
+      };
+
+      backdrop.addEventListener('click', (e) => {
+        if (e.target !== backdrop) return;
+        close(type === 'alert' ? true : null);
+      });
+
+      document.addEventListener('keydown', onKeydown, true);
+      document.body.appendChild(backdrop);
+
+      setTimeout(() => {
+        if (inputEl) {
+          inputEl.focus();
+          inputEl.select();
+        } else {
+          okBtn.focus();
+        }
+      }, 0);
+    });
+  }
+
+  async function uiAlert(message, title = '提示') {
+    await showInlineDialog({ type: 'alert', title, message });
+  }
+
+  async function uiConfirm(message, title = '请确认') {
+    const result = await showInlineDialog({ type: 'confirm', title, message });
+    return result === true;
+  }
+
+  async function uiPrompt(message, defaultValue = '', title = '请输入') {
+    const result = await showInlineDialog({
+      type: 'prompt',
+      title,
+      message,
+      defaultValue,
+      placeholder: '请输入内容'
+    });
+    return typeof result === 'string' ? result : null;
   }
 
   /**
@@ -3637,6 +3849,7 @@
         const includeAllPages = document.createElement('input');
         includeAllPages.type = 'checkbox';
         includeAllPages.id = 'wnacg-include-all-pages';
+        includeAllPages.setAttribute('aria-label', '包含书架所有分页中的相册');
         includeAllPagesLabel.appendChild(includeAllPages);
         includeAllPagesLabel.appendChild(document.createTextNode('包含所有分页（谨慎）'));
 
@@ -3687,12 +3900,12 @@
             }
 
             if (!aids || aids.length === 0) {
-              alert('未选择任何相册');
+              await uiAlert('未选择任何相册');
               return;
             }
 
             if (aids.length > 50) {
-              const ok = confirm(`将开始下载 ${aids.length} 个相册（可能触发限额/封禁）。确定继续？`);
+              const ok = await uiConfirm(`将开始下载 ${aids.length} 个相册（可能触发限额/封禁）。确定继续？`);
               if (!ok) return;
             }
 
@@ -3720,6 +3933,8 @@
         checkbox.type = 'checkbox';
         checkbox.className = 'wnacg-shelf-checkbox';
         checkbox.dataset.aid = String(aid);
+        const shelfTitle = String(anchor.textContent || '').replace(/\s+/g, ' ').trim();
+        checkbox.setAttribute('aria-label', shelfTitle ? `选择相册：${shelfTitle}` : `选择相册 aid ${aid}`);
 
         checkbox.addEventListener('change', updateShelfSelectedCount);
 
@@ -4582,12 +4797,12 @@
             const uniqueAids = Array.from(new Set([...storedAids, ...checkboxAids]));
 
             if (uniqueAids.length === 0) {
-              alert('未选择任何相册');
+              await uiAlert('未选择任何相册');
               return;
             }
 
             if (uniqueAids.length > 50) {
-              const ok = confirm(`将开始下载 ${uniqueAids.length} 个相册。确定继续？`);
+              const ok = await uiConfirm(`将开始下载 ${uniqueAids.length} 个相册。确定继续？`);
               if (!ok) return;
             }
 
@@ -4671,6 +4886,7 @@
         checkbox.type = 'checkbox';
         checkbox.className = 'wnacg-gallery-checkbox';
         checkbox.dataset.aid = String(aid);
+        checkbox.setAttribute('aria-label', itemTitle ? `选择相册：${itemTitle}` : `选择相册 aid ${aid}`);
 
         // stopPropagation 防止点击 checkbox 触发链接跳转
         checkbox.addEventListener('click', (e) => {
@@ -4816,7 +5032,9 @@
     const findBtn = document.createElement('a');
     findBtn.id = 'wnacg-album-series-find';
     findBtn.className = Array.from(classSet).join(' ');
-    findBtn.href = 'javascript:void(0)';
+    findBtn.href = '#';
+    findBtn.setAttribute('role', 'button');
+    findBtn.setAttribute('aria-label', '搜索系列作品');
     findBtn.textContent = '系列作品';
 
     const actionRow = ensureAlbumActionRow(referenceEl);
@@ -4832,11 +5050,11 @@
       e.preventDefault();
       const title = extractCurrentAlbumTitle();
       const suggested = extractSeriesKeyword(title) || deriveSeriesKeywordSuggestion(title);
-      const input = window.prompt('请输入系列关键词（例如：秘密教學）', suggested || '');
+      const input = await uiPrompt('请输入系列关键词（例如：秘密教學）', suggested || '', '系列作品检索');
       if (input === null) return;
       const keyword = String(input).trim();
       if (!keyword) {
-        alert('关键词不能为空');
+        await uiAlert('关键词不能为空');
         return;
       }
       await initAlbumSeriesPanel(aid, keyword, true);
@@ -4876,7 +5094,9 @@
         if (name) classSet.add(name);
       }
       oneClick.className = Array.from(classSet).join(' ');
-      oneClick.href = 'javascript:void(0)';
+      oneClick.href = '#';
+      oneClick.setAttribute('role', 'button');
+      oneClick.setAttribute('aria-label', '一键下载当前相册');
       oneClick.textContent = '一键下载';
 
       const actionRow = ensureAlbumActionRow(downloadBtn);
@@ -5055,6 +5275,7 @@
       // 当前处理索引
       this.currentIndex = 0;
       this.isTaskInProgress = false;
+      this._runnerPromise = null;
       
       // 统计信息
       this.stats = {
@@ -5130,10 +5351,29 @@
       this.isCancelled = false;
       this.isPaused = false;
       this.currentIndex = 0;
+      this.stats.successful = 0;
+      this.stats.failed = 0;
+      this.stats.total = this.tasks.length;
       
       log(`开始处理下载队列，共 ${this.tasks.length} 个任务`);
       
-      await this._processQueue();
+      await this._runQueueSafely();
+    }
+
+    async _runQueueSafely() {
+      if (this._runnerPromise) {
+        return this._runnerPromise;
+      }
+
+      this._runnerPromise = (async () => {
+        try {
+          await this._processQueue();
+        } finally {
+          this._runnerPromise = null;
+        }
+      })();
+
+      return this._runnerPromise;
     }
     
     /**
@@ -5165,9 +5405,13 @@
       
       this.isPaused = false;
       log('队列已恢复');
+
+      if (this.isTaskInProgress) {
+        return;
+      }
       
       // 继续处理队列
-      await this._processQueue();
+      await this._runQueueSafely();
     }
     
     /**
