@@ -978,7 +978,7 @@
           /* ============ 移动端适配 ============ */
           @media (max-width: 768px) {
             :root {
-              --wnacg-toolbar-h: 136px;
+              --wnacg-toolbar-h: 0px;
               --wnacg-sa-bottom: env(safe-area-inset-bottom, 0px);
             }
 
@@ -996,6 +996,14 @@
             }
 
             .wnacg-album-action-row > a {
+              min-height: 44px;
+              flex: 1 1 calc(50% - 6px);
+              min-width: 120px;
+              padding: 0 10px;
+              font-size: 14px;
+            }
+
+            .wnacg-album-action-row > button {
               min-height: 44px;
               flex: 1 1 calc(50% - 6px);
               min-width: 120px;
@@ -1030,30 +1038,29 @@
               left: 8px;
             }
 
-            /* 画廊工具栏底部悬浮 */
+            /* 画廊工具栏：移动端改为顶部粘性，避免遮挡下半屏 */
             .wnacg-gallery-toolbar {
-              position: fixed;
-              left: 8px;
-              right: 8px;
-              top: auto;
-              bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
-              margin: 0;
+              position: sticky;
+              left: auto;
+              right: auto;
+              top: calc(env(safe-area-inset-top, 0px) + 6px);
+              bottom: auto;
+              margin: 8px 0;
               max-width: none;
-              border-radius: 14px;
+              border-radius: 12px;
               padding: 10px;
               flex-wrap: wrap;
               justify-content: flex-start;
               gap: 6px;
-              box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.2);
-              z-index: 9998;
-              max-height: min(45vh, 220px);
-              overflow-y: auto;
-              -webkit-overflow-scrolling: touch;
+              box-shadow: var(--wnacg-shadow-sm);
+              z-index: 120;
+              max-height: none;
+              overflow: visible;
             }
 
             .wnacg-gallery-toolbar .wnacg-batch-btn {
-              flex: 1 1 calc(33.33% - 6px);
-              min-width: 84px;
+              flex: 1 1 calc(50% - 6px);
+              min-width: 110px;
               font-size: 12px;
             }
 
@@ -1073,22 +1080,25 @@
 
             /* 工具栏存在时页面底部留白 */
             body.wnacg-mobile-has-toolbar {
-              padding-bottom: calc(var(--wnacg-toolbar-h) + env(safe-area-inset-bottom, 0px)) !important;
+              padding-bottom: 0 !important;
             }
 
-            /* 进度面板底部全宽 */
+            /* 进度面板：移动端放到顶部，避免遮挡下半屏 */
             .wnacg-progress-panel {
-              left: auto;
+              left: 8px;
               right: 8px;
-              top: auto;
-              width: min(92vw, 360px);
+              top: calc(env(safe-area-inset-top, 0px) + 54px);
+              bottom: auto;
+              width: auto;
               border-radius: 14px;
-              max-height: 44vh;
+              max-height: min(38vh, 250px);
               overflow-y: auto;
             }
-            /* 工具栏存在时进度面板偏移 */
+
+            /* 兼容旧逻辑 class，不再做底部偏移 */
             body.wnacg-mobile-has-toolbar .wnacg-progress-panel {
-              bottom: calc(var(--wnacg-toolbar-h) + env(safe-area-inset-bottom, 0px) + 16px);
+              top: calc(env(safe-area-inset-top, 0px) + 54px);
+              bottom: auto;
             }
 
             .wnacg-progress-panel.wnacg-minimized {
