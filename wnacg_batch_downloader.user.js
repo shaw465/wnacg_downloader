@@ -886,6 +886,30 @@
           box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
         }
 
+        .wnacg-ranking-item {
+          position: relative;
+        }
+
+        .wnacg-ranking-item .wnacg-gallery-checkbox {
+          position: static;
+          width: 20px;
+          height: 20px;
+          margin: 0 8px 0 0;
+          vertical-align: middle;
+          box-shadow: none;
+          border-radius: 4px;
+        }
+
+        .wnacg-ranking-item.wnacg-selected {
+          outline: 2px solid #10b981;
+          outline-offset: -2px;
+          background: #ecfdf5;
+        }
+
+        .wnacg-ranking-item .wnacg-gallery-hot-badge {
+          display: none !important;
+        }
+
         .wnacg-gallery-hot-badge {
           position: absolute;
           right: 6px;
@@ -4047,7 +4071,7 @@
 
     for (const cb of checkboxes) {
       cb.checked = isSelected;
-      cb.closest('.wnacg-gallery-item')?.classList.toggle('wnacg-selected', isSelected);
+      cb.closest('.wnacg-gallery-item, .wnacg-ranking-item')?.classList.toggle('wnacg-selected', isSelected);
     }
 
     if (isSelected) {
@@ -4658,6 +4682,8 @@
         return;
       }
 
+      const isRankingPage = /favorite_ranking/i.test(String(location.href || '').toLowerCase());
+
       // 注入工具栏（防止重复注入）
       if (!document.getElementById('wnacg-gallery-toolbar')) {
         const toolbar = document.createElement('div');
@@ -4688,21 +4714,27 @@
         btnBatchDownload.className = 'wnacg-batch-btn';
         btnBatchDownload.textContent = '批量下载';
 
-        const btnMarkPopularity = document.createElement('button');
-        btnMarkPopularity.className = 'wnacg-batch-btn';
-        btnMarkPopularity.textContent = '刷新热度';
+        let btnMarkPopularity = null;
+        let btnClearPopularity = null;
+        let btnAutoPopularity = null;
+        let popularityLegend = null;
+        if (!isRankingPage) {
+          btnMarkPopularity = document.createElement('button');
+          btnMarkPopularity.className = 'wnacg-batch-btn';
+          btnMarkPopularity.textContent = '刷新热度';
 
-        const btnClearPopularity = document.createElement('button');
-        btnClearPopularity.className = 'wnacg-batch-btn';
-        btnClearPopularity.textContent = '清除热度';
+          btnClearPopularity = document.createElement('button');
+          btnClearPopularity.className = 'wnacg-batch-btn';
+          btnClearPopularity.textContent = '清除热度';
 
-        const btnAutoPopularity = document.createElement('button');
-        btnAutoPopularity.className = 'wnacg-batch-btn';
-        btnAutoPopularity.textContent = '自动热度：开';
+          btnAutoPopularity = document.createElement('button');
+          btnAutoPopularity.className = 'wnacg-batch-btn';
+          btnAutoPopularity.textContent = '自动热度：开';
 
-        const popularityLegend = document.createElement('div');
-        popularityLegend.className = 'wnacg-gallery-hot-legend';
-        popularityLegend.textContent = `热度说明：${getPopularityLegendText()}`;
+          popularityLegend = document.createElement('div');
+          popularityLegend.className = 'wnacg-gallery-hot-legend';
+          popularityLegend.textContent = `热度说明：${getPopularityLegendText()}`;
+        }
 
         const count = document.createElement('div');
         count.className = 'wnacg-gallery-count';
@@ -4719,10 +4751,10 @@
         toolbar.appendChild(btnSelectAll);
         toolbar.appendChild(btnInvert);
         toolbar.appendChild(btnBatchDownload);
-        toolbar.appendChild(btnMarkPopularity);
-        toolbar.appendChild(btnClearPopularity);
-        toolbar.appendChild(btnAutoPopularity);
-        toolbar.appendChild(popularityLegend);
+        if (btnMarkPopularity) toolbar.appendChild(btnMarkPopularity);
+        if (btnClearPopularity) toolbar.appendChild(btnClearPopularity);
+        if (btnAutoPopularity) toolbar.appendChild(btnAutoPopularity);
+        if (popularityLegend) toolbar.appendChild(popularityLegend);
         toolbar.appendChild(modeIndicator);
         toolbar.appendChild(count);
 
@@ -4790,7 +4822,7 @@
         btnClearSelection.addEventListener('click', () => {
           clearStoredAids();
           for (const cb of getCheckboxes()) cb.checked = false;
-          for (const li of document.querySelectorAll('.wnacg-gallery-item.wnacg-selected')) {
+          for (const li of document.querySelectorAll('.wnacg-gallery-item.wnacg-selected, .wnacg-ranking-item.wnacg-selected')) {
             li.classList.remove('wnacg-selected');
           }
           updateGallerySelectedCount();
@@ -4847,7 +4879,7 @@
             // 下载完成后清空选择
             clearStoredAids();
             for (const cb of getCheckboxes()) cb.checked = false;
-            for (const li of document.querySelectorAll('.wnacg-gallery-item.wnacg-selected')) {
+            for (const li of document.querySelectorAll('.wnacg-gallery-item.wnacg-selected, .wnacg-ranking-item.wnacg-selected')) {
               li.classList.remove('wnacg-selected');
             }
             updateGallerySelectedCount();
@@ -4856,47 +4888,51 @@
           }
         });
 
-        btnMarkPopularity.addEventListener('click', async () => {
-          if (btnMarkPopularity.disabled) return;
-          btnMarkPopularity.disabled = true;
-          btnClearPopularity.disabled = true;
-          const oldText = btnMarkPopularity.textContent;
-          btnMarkPopularity.textContent = '刷新中...';
-          try {
-            const markedCount = await triggerGalleryPopularityAnnotation({ forceRefresh: true, source: 'manual' });
-            log(`画廊热度刷新完成，共 ${markedCount} 个相册`);
-          } finally {
-            btnMarkPopularity.disabled = false;
-            btnClearPopularity.disabled = false;
-            btnMarkPopularity.textContent = oldText;
-          }
-        });
+        if (btnMarkPopularity && btnClearPopularity && btnAutoPopularity) {
+          btnMarkPopularity.addEventListener('click', async () => {
+            if (btnMarkPopularity.disabled) return;
+            btnMarkPopularity.disabled = true;
+            btnClearPopularity.disabled = true;
+            const oldText = btnMarkPopularity.textContent;
+            btnMarkPopularity.textContent = '刷新中...';
+            try {
+              const markedCount = await triggerGalleryPopularityAnnotation({ forceRefresh: true, source: 'manual' });
+              log(`画廊热度刷新完成，共 ${markedCount} 个相册`);
+            } finally {
+              btnMarkPopularity.disabled = false;
+              btnClearPopularity.disabled = false;
+              btnMarkPopularity.textContent = oldText;
+            }
+          });
 
-        btnClearPopularity.addEventListener('click', () => {
-          clearGalleryPopularityBadges();
-        });
+          btnClearPopularity.addEventListener('click', () => {
+            clearGalleryPopularityBadges();
+          });
 
-        btnAutoPopularity.addEventListener('click', () => {
-          const enabled = !getGalleryPopularityAutoEnabled();
-          setGalleryPopularityAutoEnabled(enabled);
-          updateGalleryAutoButtonState(btnAutoPopularity, enabled, false);
+          btnAutoPopularity.addEventListener('click', () => {
+            const enabled = !getGalleryPopularityAutoEnabled();
+            setGalleryPopularityAutoEnabled(enabled);
+            updateGalleryAutoButtonState(btnAutoPopularity, enabled, false);
 
-          if (enabled) {
-            scheduleGalleryPopularityAutoRun({ delayMs: 350, forceRefresh: false });
-          }
-        });
+            if (enabled) {
+              scheduleGalleryPopularityAutoRun({ delayMs: 350, forceRefresh: false });
+            }
+          });
+        }
 
         applySelectMode(getStoredSelectMode());
         updateGallerySelectedCount();
-        STATE.ui.galleryAutoBtn = btnAutoPopularity;
-        updateGalleryAutoButtonState(btnAutoPopularity, getGalleryPopularityAutoEnabled(), false);
+        if (btnAutoPopularity) {
+          STATE.ui.galleryAutoBtn = btnAutoPopularity;
+          updateGalleryAutoButtonState(btnAutoPopularity, getGalleryPopularityAutoEnabled(), false);
+        }
       }
 
       // 注入每个画廊卡片的 checkbox
       let injectedCount = 0;
       for (const li of galleryItems) {
         if (li.dataset.wnacgGalleryInjected === '1') continue;
-        li.classList.add('wnacg-gallery-item');
+        li.classList.add(isRankingPage ? 'wnacg-ranking-item' : 'wnacg-gallery-item');
 
         // 从卡片内链接提取 aid
         const link = li.querySelector(
@@ -4997,7 +5033,18 @@
           }
         } // end if (interactionTarget)
 
-        li.appendChild(checkbox);
+        if (isRankingPage) {
+          const firstAidLink = li.querySelector(
+            'a[href*="photos-index-aid-"], a[href*="photos-slist-aid-"], a[href*="photos-slide-aid-"]'
+          );
+          if (firstAidLink && firstAidLink.parentElement) {
+            firstAidLink.parentElement.insertBefore(checkbox, firstAidLink);
+          } else {
+            li.insertBefore(checkbox, li.firstChild);
+          }
+        } else {
+          li.appendChild(checkbox);
+        }
 
         // 从 sessionStorage 恢复已选状态
         if (isAidStored(aid)) {
@@ -5008,9 +5055,11 @@
       }
 
       updateGallerySelectedCount();
-      applyGalleryPopularityBadgesFromCache();
-      if (getGalleryPopularityAutoEnabled()) {
-        scheduleGalleryPopularityAutoRun({ delayMs: 900, forceRefresh: false });
+      if (!isRankingPage) {
+        applyGalleryPopularityBadgesFromCache();
+        if (getGalleryPopularityAutoEnabled()) {
+          scheduleGalleryPopularityAutoRun({ delayMs: 900, forceRefresh: false });
+        }
       }
 
       log(`画廊页初始化完成，共注入 ${injectedCount} 个 checkbox`);
