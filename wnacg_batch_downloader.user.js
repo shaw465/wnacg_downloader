@@ -4726,14 +4726,34 @@
         toolbar.appendChild(modeIndicator);
         toolbar.appendChild(count);
 
-        // 插入到第一个画廊区块之前（无 gallary_wrap 时回退到第一张卡片）
+        // 插入到画廊容器之前。
+        // 注意：当卡片容器是 ul/ol 时，不能把 div 工具栏直接插进列表内部，否则排行页会出现排版错乱。
         const firstWrap = document.querySelector('div.gallary_wrap') || galleryItems[0];
+        let inserted = false;
         if (firstWrap && firstWrap.parentElement) {
-          firstWrap.parentElement.insertBefore(toolbar, firstWrap);
-        } else {
+          const directParent = firstWrap.parentElement;
+          const listContainer = firstWrap.closest('ul,ol');
+
+          if (listContainer && listContainer.parentElement && listContainer.contains(firstWrap)) {
+            listContainer.parentElement.insertBefore(toolbar, listContainer);
+            inserted = true;
+          } else if (/^(UL|OL)$/i.test(directParent.tagName) && directParent.parentElement) {
+            directParent.parentElement.insertBefore(toolbar, directParent);
+            inserted = true;
+          } else {
+            directParent.insertBefore(toolbar, firstWrap);
+            inserted = true;
+          }
+        }
+
+        if (!inserted) {
           const header = document.getElementById('header');
-          if (header && header.nextSibling) {
-            header.parentElement.insertBefore(toolbar, header.nextSibling);
+          if (header && header.parentElement) {
+            if (header.nextSibling) {
+              header.parentElement.insertBefore(toolbar, header.nextSibling);
+            } else {
+              header.parentElement.appendChild(toolbar);
+            }
           } else {
             document.body.insertBefore(toolbar, document.body.firstChild);
           }
